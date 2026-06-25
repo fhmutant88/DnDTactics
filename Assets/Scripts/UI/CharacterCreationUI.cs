@@ -15,6 +15,9 @@ namespace DnDTactics.UI
         public List<CharacterClass> classOptions = new List<CharacterClass>();
         public List<Background> backgroundOptions = new List<Background>();
 
+        [Header("Ability Scores")]
+        public AbilityScorePanel scorePanel;
+
         [Header("UI References")]
         public TMP_InputField nameInput;
         public TMP_Dropdown speciesDropdown;
@@ -45,7 +48,9 @@ namespace DnDTactics.UI
             classDropdown.onValueChanged.AddListener(_ => Refresh());
             backgroundDropdown.onValueChanged.AddListener(_ => Refresh());
             levelSlider.onValueChanged.AddListener(_ => Refresh());
-            createButton.onClick.AddListener(OnCreateClicked);
+            createButton.onClick.AddListener(OnCreateClicked); 
+            
+            if (scorePanel != null) scorePanel.OnChanged += Refresh;
 
             Refresh();
         }
@@ -69,9 +74,18 @@ namespace DnDTactics.UI
             if (classOptions.Count > 0) b.characterClass = classOptions[classDropdown.value];
             if (backgroundOptions.Count > 0) b.background = backgroundOptions[backgroundDropdown.value];
 
-            // First pass: Standard Array in order + background +2/+1 auto-applied.
-            // The interactive score-assignment panel replaces this next step.
-            b.UseStandardArrayInOrder();
+            // Base scores now come from the interactive panel (falls back to
+            // Standard Array if the panel isn't wired yet).
+            if (scorePanel != null)
+            {
+                b.method = scorePanel.Method;
+                int[] s = scorePanel.GetScores();
+                for (int i = 0; i < 6; i++) b.baseScores[i] = s[i];
+            }
+            else
+            {
+                b.UseStandardArrayInOrder();
+            }
             if (b.background != null && b.background.abilityOptions.Count >= 2)
             {
                 b.SetBackgroundBonus(b.background.abilityOptions[0], 2);
