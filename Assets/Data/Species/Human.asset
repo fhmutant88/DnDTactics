@@ -17,4 +17,7 @@ MonoBehaviour:
   size: 1
   speed: 30
   darkvisionRange: 0
-  traits: []
+  traits:
+  - 'Resourceful: gain Heroic Inspiration after each Long Rest'
+  - 'Skillful: proficiency in one skill of your choice'
+  - 'Versatile: gain one Origin feat'

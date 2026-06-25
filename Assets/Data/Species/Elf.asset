@@ -17,4 +17,7 @@ MonoBehaviour:
   size: 1
   speed: 30
   darkvisionRange: 60
-  traits: []
+  traits:
+  - 'Fey Ancestry: advantage on saves against being charmed'
+  - 'Keen Senses: proficiency in Perception, Insight, or Survival'
+  - 'Trance: 4-hour rest instead of sleep; immune to magical sleep'

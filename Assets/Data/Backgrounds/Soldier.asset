@@ -12,9 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 305e20adc99a3dc46b0c578bddfd9ef3, type: 3}
   m_Name: Soldier
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.Background
-  backgroundName: New Background
+  backgroundName: Soldier
   description: 
-  abilityOptions: 
-  originFeat: 
-  skillProficiencies: []
-  toolProficiency: 
+  abilityOptions: 000000000100000002000000
+  originFeat: Savage Attacker
+  skillProficiencies:
+  - Athletics
+  - Intimidation
+  toolProficiency: Gaming Set
