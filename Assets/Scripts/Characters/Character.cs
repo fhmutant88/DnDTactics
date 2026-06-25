@@ -40,6 +40,7 @@ namespace DnDTactics.Characters
         // ---- Derived stats ----
 
         public int ProficiencyBonus => Progression.ProficiencyBonus(level);
+        public int Speed => species != null ? species.speed : 30;
         public int InitiativeModifier => abilities.GetModifier(Ability.Dexterity);
 
         // Unarmored placeholder. Real AC comes once we have armor/equipment.
