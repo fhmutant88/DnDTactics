@@ -65,6 +65,26 @@ namespace DnDTactics.Characters
             }
         }
 
+        // ---- Health / damage ----
+
+        public bool IsDown { get; private set; }   // dropped to 0 HP
+
+        // Returns the actual damage applied (clamped so HP never goes below 0).
+        public int TakeDamage(int amount)
+        {
+            if (amount <= 0) return 0;
+            int before = currentHP;
+            currentHP = System.Math.Max(0, currentHP - amount);
+            if (currentHP == 0) IsDown = true;
+            return before - currentHP;
+        }
+
+        public void Heal(int amount)
+        {
+            if (amount <= 0 || IsDown) return; // revival is a separate system (Milestone 6)
+            currentHP = System.Math.Min(MaxHP, currentHP + amount);
+        }
+
         // ---- XP / leveling ----
 
         // Adds XP and applies any level-ups. Returns true if at least one level was gained.

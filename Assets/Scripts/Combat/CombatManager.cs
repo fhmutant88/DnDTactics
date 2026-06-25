@@ -56,8 +56,9 @@ namespace DnDTactics.Combat
 
         void Update()
         {
-            if (Input.GetMouseButtonDown(0)) HandleClick();
-            if (Input.GetKeyDown(KeyCode.Space)) EndTurn(); // press Space to pass the turn
+            if (Input.GetMouseButtonDown(0)) HandleClick();        // left: select / move
+            if (Input.GetMouseButtonDown(1)) HandleAttackClick();  // right: attack
+            if (Input.GetKeyDown(KeyCode.Space)) EndTurn();        // pass the turn
         }
 
         void HandleClick()
@@ -182,6 +183,61 @@ namespace DnDTactics.Combat
         {
             turnOrder.Advance();
             BeginTurn();
+        }
+
+        // Right-click to attack the combatant under the cursor.
+        void HandleAttackClick()
+        {
+            var active = turnOrder.Current?.combatant;
+            if (active == null) return;
+            if (!resources.ActionAvailable) { Debug.Log("No action left this turn."); return; }
+
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (!Physics.Raycast(ray, out RaycastHit hit, 200f)) return;
+            var targetCombatant = hit.collider.GetComponent<Combatant>();
+            if (targetCombatant == null) return;
+
+            TryAttack(active, targetCombatant);
+        }
+
+        void TryAttack(Combatant attacker, Combatant target)
+        {
+            if (target == attacker) return;
+            if (target.Team == attacker.Team) { Debug.Log("Can't attack an ally."); return; }
+
+            int dist = attacker.Coord.DistanceInSquares(target.Coord);
+            if (dist > 1) { Debug.Log($"Target out of melee range ({dist} squares away)."); return; }
+
+            var result = AttackResolver.ResolveMeleeAttack(attacker.Character, target.Character);
+            Debug.Log(result.summary);
+
+            if (result.hit)
+            {
+                target.Character.TakeDamage(result.damage);
+                Debug.Log($"  {target.Character.characterName}: " +
+                          $"HP {target.Character.currentHP}/{target.Character.MaxHP}");
+                if (target.Character.IsDown) DropCombatant(target);
+            }
+
+            resources.ActionAvailable = false;   // attacking spends your action
+        }
+
+        void DropCombatant(Combatant c)
+        {
+            Debug.Log($"*** {c.Character.characterName} is down! ***");
+            occupancy.Remove(c.Coord);
+            combatants.Remove(c);
+            turnOrder.Remove(c);
+            Destroy(c.gameObject);
+            CheckForVictory();
+        }
+
+        void CheckForVictory()
+        {
+            bool playersLeft = combatants.Exists(c => c.Team == Team.Player);
+            bool enemiesLeft = combatants.Exists(c => c.Team == Team.Enemy);
+            if (!playersLeft) Debug.Log("=== DEFEAT — all heroes are down. ===");
+            else if (!enemiesLeft) Debug.Log("=== VICTORY — all enemies defeated! ===");
         }
     }
 }
