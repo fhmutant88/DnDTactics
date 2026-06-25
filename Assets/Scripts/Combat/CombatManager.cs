@@ -22,6 +22,9 @@ namespace DnDTactics.Combat
         public CharacterClass enemyClass;
         public Background background;
 
+        [Header("Procedural setup (optional — set by EncounterSetup)")]
+        public bool useExternalSetup = false;   // when true, skip the hardcoded test spawns
+
         [Header("Weapons (drag assets)")]
         public Weapon playerWeapon;
         public Weapon enemyWeapon;
@@ -41,22 +44,78 @@ namespace DnDTactics.Combat
         private TurnResources resources = new TurnResources();
         private Dictionary<GridCoord, int> reachable = new();
 
+        // External setup: provide the grid the combat runs on.
+        public void SetGrid(TacticalGrid externalGrid)
+        {
+            grid = externalGrid;
+        }
+
+        // External setup: spawn a player character at a coord (real Character, not test).
+        public Combatant SpawnPlayer(Character character, GridCoord coord)
+        {
+            return SpawnExisting(character, Team.Player, coord, playerColor, playerWeapon);
+        }
+
+        // External setup: spawn a monster from MonsterStats at a coord.
+        public Combatant SpawnMonster(DnDTactics.Data.MonsterStats stats, GridCoord coord)
+        {
+            // Wrap the monster's stats in a lightweight Character-like setup.
+            // For now we reuse Character via a simple adapter (see note below).
+            var character = MonsterAdapter.ToCharacter(stats);
+            var c = SpawnExisting(character, Team.Enemy, coord, enemyColor, enemyWeapon);
+            return c;
+        }
+
+        // Shared spawn for pre-built characters (vs. the test BuildTestCharacter path).
+        Combatant SpawnExisting(Character character, Team team, GridCoord coord,
+                                Color color, Weapon weapon)
+        {
+            if (grid == null || !grid.InBounds(coord) || occupancy.ContainsKey(coord))
+            {
+                Debug.LogWarning($"Can't spawn {character.characterName} at {coord}.");
+                return null;
+            }
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            go.name = $"Combatant_{character.characterName}";
+            go.transform.SetParent(transform);
+            go.transform.localScale = new Vector3(0.7f, 0.8f, 0.7f);
+
+            var combatant = go.AddComponent<Combatant>();
+            combatant.Initialize(character, team, coord, color);
+            combatant.SetWeapon(weapon);
+            combatant.SetCoord(coord, grid, tokenYOffset);
+
+            occupancy[coord] = combatant;
+            combatants.Add(combatant);
+            return combatant;
+        }
+
+        // External setup: once all combatants are spawned, start the fight.
+        public void StartExternalEncounter()
+        {
+            if (combatants.Count == 0) { Debug.LogError("No combatants to fight."); return; }
+            BeginEncounter();
+        }
+
         void Start()
         {
-            grid = gridVisualizer != null ? gridVisualizer.Grid : null;
+            if (gridVisualizer != null) grid = gridVisualizer.Grid;
             if (grid == null)
             {
                 Debug.LogError("CombatManager: no grid. Assign GridVisualizer in the Inspector.");
                 return;
             }
 
-            SpawnCombatant("Hero A", playerClass, Team.Player, new GridCoord(2, 1));
-            SpawnCombatant("Hero B", playerClass, Team.Player, new GridCoord(3, 1));
-            SpawnCombatant("Enemy A", enemyClass, Team.Enemy, new GridCoord(6, 8));
-            SpawnCombatant("Enemy B", enemyClass, Team.Enemy, new GridCoord(7, 8));
-            turnOrder.Roll(combatants);
-            LogInitiative();
-            BeginTurn();
+            if (!useExternalSetup)
+            {
+                SpawnCombatant("Hero A", playerClass, Team.Player, new GridCoord(2, 1));
+                SpawnCombatant("Hero B", playerClass, Team.Player, new GridCoord(3, 1));
+                SpawnCombatant("Enemy A", enemyClass, Team.Enemy, new GridCoord(6, 8));
+                SpawnCombatant("Enemy B", enemyClass, Team.Enemy, new GridCoord(7, 8));
+                BeginEncounter();
+            }
+            // when useExternalSetup is true, EncounterSetup calls our public API instead
         }
 
         void Update()
@@ -140,6 +199,13 @@ namespace DnDTactics.Combat
             foreach (var e in turnOrder.Entries)
                 Debug.Log($"{i++}. {e.combatant.Character.characterName} " +
                           $"({e.combatant.Team}) — {e.total} (rolled {e.roll}, Dex {e.dexModifier:+0;-0;0})");
+        }
+
+        void BeginEncounter()
+        {
+            turnOrder.Roll(combatants);
+            LogInitiative();
+            BeginTurn();
         }
 
         void BeginTurn()

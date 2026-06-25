@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4b39fa2f480dae4ba3b327ac8f05c99, type: 3}
   m_Name: Bugbear
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.MonsterStats
-  monsterName: New Monster
+  monsterName: Bugbear
   challengeRating: 1
-  maxHP: 11
-  armorClass: 12
+  maxHP: 27
+  armorClass: 16
   speed: 30
   attackBonus: 3
   damageDiceCount: 1

@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4b39fa2f480dae4ba3b327ac8f05c99, type: 3}
   m_Name: Ogre
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.MonsterStats
-  monsterName: New Monster
-  challengeRating: 1
-  maxHP: 11
-  armorClass: 12
-  speed: 30
+  monsterName: Ogre
+  challengeRating: 2
+  maxHP: 59
+  armorClass: 11
+  speed: 40
   attackBonus: 3
   damageDiceCount: 1
   damageDieSides: 6

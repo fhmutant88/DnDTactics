@@ -40,20 +40,23 @@ namespace DnDTactics.Characters
         // ---- Derived stats ----
 
         public int ProficiencyBonus => Progression.ProficiencyBonus(level);
-        public int Speed => species != null ? species.speed : 30;
+        public int Speed => speedOverride ?? (species != null ? species.speed : 30);
         public int InitiativeModifier => abilities.GetModifier(Ability.Dexterity);
 
         // Unarmored placeholder. Real AC comes once we have armor/equipment.
-        public int ArmorClass => 10 + abilities.GetModifier(Ability.Dexterity);
+        public int ArmorClass => acOverride ?? (10 + abilities.GetModifier(Ability.Dexterity));
 
         public int AbilityModifier(Ability ability) => abilities.GetModifier(ability);
 
         // Max HP for the current level: level 1 = max hit die + Con mod;
         // each later level = average roll (die/2 + 1) + Con mod. Minimum 1 per level.
         public int MaxHP
+            
         {
             get
             {
+                if (hpOverride.HasValue) return hpOverride.Value;
+
                 int conMod = abilities.GetModifier(Ability.Constitution);
                 int die = characterClass != null ? characterClass.hitDie : 8;
 
@@ -83,6 +86,15 @@ namespace DnDTactics.Characters
         {
             if (amount <= 0 || IsDown) return; // revival is a separate system (Milestone 6)
             currentHP = System.Math.Min(MaxHP, currentHP + amount);
+        }
+
+        // Monster support: override derived stats with flat values from MonsterStats.
+        private int? hpOverride, acOverride, speedOverride;
+
+        public void OverrideCombatStats(int hp, int ac, int speed)
+        {
+            hpOverride = hp; acOverride = ac; speedOverride = speed;
+            currentHP = hp;
         }
 
         // ---- XP / leveling ----
