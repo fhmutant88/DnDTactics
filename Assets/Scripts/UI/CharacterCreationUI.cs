@@ -17,6 +17,7 @@ namespace DnDTactics.UI
 
         [Header("Ability Scores")]
         public AbilityScorePanel scorePanel;
+        public BackgroundBonusPanel bonusPanel;
 
         [Header("UI References")]
         public TMP_InputField nameInput;
@@ -51,6 +52,13 @@ namespace DnDTactics.UI
             createButton.onClick.AddListener(OnCreateClicked); 
             
             if (scorePanel != null) scorePanel.OnChanged += Refresh;
+            if (bonusPanel != null)
+            {
+                bonusPanel.OnChanged += Refresh;
+                // keep the bonus panel in sync when the background dropdown changes
+                backgroundDropdown.onValueChanged.AddListener(_ => SyncBonusPanel());
+                SyncBonusPanel(); // initialize for the starting selection
+            }
 
             Refresh();
         }
@@ -86,12 +94,26 @@ namespace DnDTactics.UI
             {
                 b.UseStandardArrayInOrder();
             }
-            if (b.background != null && b.background.abilityOptions.Count >= 2)
+            if (bonusPanel != null)
+            {
+                int[] bonuses = bonusPanel.GetBonuses();
+                for (int i = 0; i < 6; i++) b.backgroundBonuses[i] = bonuses[i];
+            }
+            else if (b.background != null && b.background.abilityOptions.Count >= 2)
             {
                 b.SetBackgroundBonus(b.background.abilityOptions[0], 2);
                 b.SetBackgroundBonus(b.background.abilityOptions[1], 1);
             }
             return b;
+        }
+
+        void SyncBonusPanel()
+        {
+            if (bonusPanel == null) return;
+            Background bg = backgroundOptions.Count > 0
+                ? backgroundOptions[backgroundDropdown.value]
+                : null;
+            bonusPanel.SetBackground(bg);
         }
 
         // Live validation: drives the level label, the message area, and the button.
