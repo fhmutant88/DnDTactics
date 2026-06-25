@@ -1,5 +1,6 @@
 using UnityEngine;
 using DnDTactics.Characters;
+using DnDTactics.Data;
 
 namespace DnDTactics.Combat
 {
@@ -10,6 +11,9 @@ namespace DnDTactics.Combat
         public Character Character { get; private set; }
         public Team Team { get; private set; }
         public GridCoord Coord { get; private set; }
+
+        public Weapon Weapon { get; private set; }
+        public void SetWeapon(Weapon weapon) => Weapon = weapon;
 
         private Renderer bodyRenderer;
         private Color baseColor;

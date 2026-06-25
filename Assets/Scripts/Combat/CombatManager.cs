@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using DnDTactics.Rules;
 using DnDTactics.Data;
@@ -20,6 +21,10 @@ namespace DnDTactics.Combat
         public CharacterClass playerClass;
         public CharacterClass enemyClass;
         public Background background;
+
+        [Header("Weapons (drag assets)")]
+        public Weapon playerWeapon;
+        public Weapon enemyWeapon;
 
         [Header("Colors")]
         public Color playerColor = new Color(0.25f, 0.5f, 0.9f);
@@ -56,9 +61,12 @@ namespace DnDTactics.Combat
 
         void Update()
         {
-            if (Input.GetMouseButtonDown(0)) HandleClick();        // left: select / move
-            if (Input.GetMouseButtonDown(1)) HandleAttackClick();  // right: attack
-            if (Input.GetKeyDown(KeyCode.Space)) EndTurn();        // pass the turn
+            var active = turnOrder.Current?.combatant;
+            bool playerTurn = active != null && active.Team == Team.Player;
+
+            if (Input.GetMouseButtonDown(0)) HandleClick();              // left: select / move
+            if (playerTurn && Input.GetMouseButtonDown(1)) HandleAttackClick(); // right: attack (player only)
+            if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();        // pass (player only)
         }
 
         void HandleClick()
@@ -105,6 +113,7 @@ namespace DnDTactics.Combat
 
             var combatant = go.AddComponent<Combatant>();
             combatant.Initialize(character, team, coord, team == Team.Player ? playerColor : enemyColor);
+            combatant.SetWeapon(team == Team.Player ? playerWeapon : enemyWeapon);
             combatant.SetCoord(coord, grid, tokenYOffset);
 
             occupancy[coord] = combatant;
@@ -146,6 +155,44 @@ namespace DnDTactics.Combat
 
             Debug.Log($"--- Round {turnOrder.Round}: {entry.combatant.Character.characterName}'s turn " +
                       $"({entry.combatant.Team}) — Speed {entry.combatant.Character.Speed} ft ---");
+
+            // Enemies act automatically; players wait for input.
+            if (entry.combatant.Team == Team.Enemy)
+                StartCoroutine(RunEnemyTurn(entry.combatant));
+        }
+
+        IEnumerator RunEnemyTurn(Combatant enemy)
+        {
+            yield return new WaitForSeconds(0.5f); // brief pause so you can see the turn begin
+
+            // Enemy may have been removed before acting.
+            if (enemy == null || enemy.Character.IsDown) { EndTurn(); yield break; }
+
+            var plan = EnemyAI.Decide(
+                enemy, combatants, resources.MovementRemaining, grid,
+                coord => IsOccupied(coord));
+
+            // Move toward the chosen cell (if the plan says to move).
+            if (plan.moveTo != enemy.Coord)
+            {
+                TryMoveTo(plan.moveTo);
+                yield return new WaitForSeconds(0.4f);
+            }
+
+            // Attack if a target is now within reach and the action is still available.
+            if (plan.target != null && resources.ActionAvailable)
+            {
+                int dist = enemy.Coord.DistanceInFeet(plan.target.Coord);
+                int reach = enemy.Weapon != null ? enemy.Weapon.rangeFeet : 5;
+                if (dist <= reach)
+                {
+                    TryAttack(enemy, plan.target);
+                    yield return new WaitForSeconds(0.4f);
+                }
+            }
+
+            yield return new WaitForSeconds(0.3f);
+            EndTurn(); // enemy hands the turn back automatically
         }
 
         void RefreshMovementRange()
@@ -202,24 +249,44 @@ namespace DnDTactics.Combat
 
         void TryAttack(Combatant attacker, Combatant target)
         {
-            if (target == attacker) return;
-            if (target.Team == attacker.Team) { Debug.Log("Can't attack an ally."); return; }
-
-            int dist = attacker.Coord.DistanceInSquares(target.Coord);
-            if (dist > 1) { Debug.Log($"Target out of melee range ({dist} squares away)."); return; }
-
-            var result = AttackResolver.ResolveMeleeAttack(attacker.Character, target.Character);
-            Debug.Log(result.summary);
-
-            if (result.hit)
+            if (!resources.ActionAvailable)
             {
-                target.Character.TakeDamage(result.damage);
-                Debug.Log($"  {target.Character.characterName}: " +
-                          $"HP {target.Character.currentHP}/{target.Character.MaxHP}");
+                Debug.Log("No action left this turn.");
+                return;
+            }
+
+            int distFeet = attacker.Coord.DistanceInFeet(target.Coord);
+            int reach = attacker.Weapon != null ? attacker.Weapon.rangeFeet : 5;
+            if (distFeet > reach)
+            {
+                Debug.Log($"Target out of range ({distFeet} ft > {reach} ft reach).");
+                return;
+            }
+
+            if (attacker.Weapon == null) { Debug.Log("No weapon equipped."); return; }
+
+            AttackResult res = AttackResolver.Resolve(
+                attacker.Character, target.Character, attacker.Weapon);
+            resources.ActionAvailable = false; // attacking is your action
+
+            string atkName = attacker.Character.characterName;
+            string defName = target.Character.characterName;
+
+            if (res.critMiss) { Debug.Log($"{atkName} attacks {defName}: natural 1 — miss!"); }
+            else if (!res.hit)
+            { Debug.Log($"{atkName} attacks {defName}: {res.attackTotal} vs AC {res.targetAC} — miss."); }
+            else
+            {
+                target.Character.TakeDamage(res.damage);
+                string critTag = res.crit ? " CRIT!" : "";
+                Debug.Log($"{atkName} hits {defName}{critTag} for {res.damage} " +
+                          $"({(res.crit ? "nat 20" : res.attackTotal + " vs AC " + res.targetAC)}). " +
+                          $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}");
+
                 if (target.Character.IsDown) DropCombatant(target);
             }
 
-            resources.ActionAvailable = false;   // attacking spends your action
+            RefreshMovementRange();
         }
 
         void DropCombatant(Combatant c)
