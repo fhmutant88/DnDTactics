@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e690e828d2f86754aabdf24cdd25a4a4, type: 3}
   m_Name: Shortbow
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.Weapon
-  weaponName: New Weapon
-  rangeFeet: 5
-  usesDexterity: 0
+  weaponName: Shortbow
+  rangeFeet: 80
+  usesDexterity: 1
   damageDiceCount: 1
-  damageDieSides: 8
-  damageType: 2
+  damageDieSides: 6
+  damageType: 1

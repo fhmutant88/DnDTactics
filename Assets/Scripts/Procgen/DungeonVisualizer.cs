@@ -27,6 +27,8 @@ namespace DnDTactics.Procgen
         public TacticalGrid Grid { get; private set; }
         public DungeonMap Map { get; private set; }
 
+        public event System.Action OnGenerated;
+
         private Material floorMat, wallMat;
 
         void Start() => Generate();
@@ -58,6 +60,7 @@ namespace DnDTactics.Procgen
             EnsureMaterials();
             RenderTiles();
             Debug.Log($"Generated dungeon (seed {useSeed}) — {Map.Rooms.Count} rooms.");
+            OnGenerated?.Invoke();
         }
 
         void RenderTiles()

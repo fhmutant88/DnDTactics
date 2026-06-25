@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e690e828d2f86754aabdf24cdd25a4a4, type: 3}
   m_Name: Longsword
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.Weapon
-  weaponName: New Weapon
+  weaponName: Longsword
   rangeFeet: 5
   usesDexterity: 0
   damageDiceCount: 1
