@@ -84,6 +84,32 @@ namespace DnDTactics.UI
             Refresh();
         }
 
+        void ReviveMember(BarracksMember m)
+        {
+            var leaderId = Slot.party.EnsureLeader(Slot.barracks);
+            var payer = leaderId != null ? Slot.barracks.GetById(leaderId) : null;
+            var result = DnDTactics.Characters.RevivalService.TownRevive(m, payer);
+            Debug.Log(result.message);
+
+            if (result.success)
+            {
+                // If they're still listed in the party, return them straight to Deployed
+                // (they never left the party when they fell). Otherwise leave Available.
+                if (Slot.party.memberIds.Contains(m.id))
+                    m.status = DnDTactics.Characters.MemberStatus.Deployed;
+                GameSession.Instance.SaveActive();
+            }
+            Refresh();
+        }
+
+        void TakeLongRest()
+        {
+            var result = DnDTactics.Characters.RestService.LongRest(Slot);
+            Debug.Log(result.message);
+            GameSession.Instance.SaveActive();
+            Refresh();
+        }
+
         void Launch()
         {
             GameSession.Instance.SaveActive();
@@ -137,6 +163,8 @@ namespace DnDTactics.UI
             MakeButton("Transfer", new Vector2(0.5f, 0f), new Vector2(-330, 40),
                 new Vector2(180, 52), new Color(0.35f, 0.3f, 0.5f),
                 () => SceneFlow.Go(SceneFlow.Transfer));
+            MakeButton("Long Rest", new Vector2(0.5f, 0f), new Vector2(-540, 40),
+                new Vector2(170, 52), new Color(0.3f, 0.45f, 0.55f), TakeLongRest);
         }
 
         void MakeMemberRow(BarracksMember m, float y)
@@ -161,8 +189,20 @@ namespace DnDTactics.UI
                 MakeRowButton(row.transform, "Deploy", -250, new Color(0.2f, 0.5f, 0.3f), () => Deploy(m));
             else if (m.status == MemberStatus.Deployed)
                 MakeRowButton(row.transform, "Recall", -250, new Color(0.45f, 0.4f, 0.2f), () => Recall(m));
-            // Down/Dead: no deploy/recall (revival system handles those later).
+            else if (m.status == MemberStatus.Down)
+            {
+                int cost = DnDTactics.Rules.Revival.TownHealerCost(m.character.level);
+                MakeRowButton(row.transform, $"Revive {cost}g", -250, new Color(0.3f, 0.5f, 0.45f),
+                    () => ReviveMember(m));
+            }
+            if (m.status == MemberStatus.Down)
+            {
+                int left = DnDTactics.Rules.RevivalTiming.RevivableWindowLongRests -
+                           (Slot.party.longRestsTaken - m.fellAtLongRest);
+                info += $"   ⚠ {Mathf.Max(0, left)} long rests to revive";
+            }
 
+            // Dead: no deploy/recall/revive (revival window passed).
             MakeRowButton(row.transform, "Dismiss", -120, new Color(0.55f, 0.25f, 0.25f), () => Dismiss(m));
             rows.Add(row);
         }

@@ -403,9 +403,11 @@ namespace DnDTactics.Combat
                 if (member != null)
                 {
                     member.status = DnDTactics.Characters.MemberStatus.Down;
-                    member.character.TakeDamage(99999); // ensure their saved HP reflects downing
+                    member.fellAtLongRest = slot.party.longRestsTaken; // stamp the rest-count at death
+                    member.character.TakeDamage(99999);
                     DnDTactics.Core.GameSession.Instance.SaveActive();
-                    Debug.Log($"{member.character.characterName} marked Down in the barracks (saved).");
+                    Debug.Log($"{member.character.characterName} marked Down " +
+                              $"(fell at long rest {member.fellAtLongRest}).");
                 }
             }
 

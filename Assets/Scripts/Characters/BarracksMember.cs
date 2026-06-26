@@ -19,6 +19,7 @@ namespace DnDTactics.Characters
         public MemberStatus status;
         public int gold;
         public Inventory inventory = new Inventory();
+        public int fellAtLongRest = -1;   // longRestsTaken when this member went Down
 
         public BarracksMember(Character character, string id = null)
         {
@@ -39,5 +40,6 @@ namespace DnDTactics.Characters
         public CharacterData character;
         public int gold;
         public Inventory inventory;
+        public int fellAtLongRest = -1;
     }
 }

@@ -96,6 +96,13 @@ namespace DnDTactics.Characters
             IsDown = down;
         }
 
+        // Bring a downed character back to life at the given HP. Clears the down flag.
+        public void Revive(int hp)
+        {
+            currentHP = System.Math.Max(1, hp);
+            IsDown = false;
+        }
+
         // Monster support: override derived stats with flat values from MonsterStats.
         private int? hpOverride, acOverride, speedOverride;
 

@@ -21,6 +21,7 @@ namespace DnDTactics.Persistence
         public int Size => memberIds.Count;
         public bool IsFull => memberIds.Count >= MaxSize;
         public string leaderId;  // the "active" character; gold rewards land here, pays fees
+        public int longRestsTaken;
 
         // Ensures there's a valid leader among the deployed members; picks the first if needed.
         public string EnsureLeader(Barracks barracks)
@@ -79,6 +80,7 @@ namespace DnDTactics.Persistence
         {
             memberIds = new List<string>(memberIds),
             leaderId = leaderId,
+            longRestsTaken = longRestsTaken,
             dungeonSeed = dungeonSeed,
             runDepth = runDepth,
             difficulty = difficulty
@@ -90,6 +92,7 @@ namespace DnDTactics.Persistence
             if (d == null) return p;
             p.memberIds = d.memberIds != null ? new List<string>(d.memberIds) : new List<string>();
             p.leaderId = d.leaderId;
+            p.longRestsTaken = d.longRestsTaken;
             p.dungeonSeed = d.dungeonSeed;
             p.runDepth = d.runDepth;
             p.difficulty = d.difficulty;
@@ -102,6 +105,7 @@ namespace DnDTactics.Persistence
     {
         public List<string> memberIds = new();
         public string leaderId;
+        public int longRestsTaken;
         public int dungeonSeed;
         public int runDepth;
         public string difficulty;

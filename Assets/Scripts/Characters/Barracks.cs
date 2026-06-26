@@ -43,6 +43,7 @@ namespace DnDTactics.Characters
                     status = (int)m.status,
                     gold = m.gold,
                     inventory = m.inventory,
+                    fellAtLongRest = m.fellAtLongRest,
                     character = CharacterSerialization.ToData(m.character)
                 });
             }
@@ -62,6 +63,7 @@ namespace DnDTactics.Characters
                 };
                 member.gold = md.gold;
                 member.inventory = md.inventory ?? new Inventory();
+                member.fellAtLongRest = md.fellAtLongRest;
                 b.members.Add(member);
             }
             return b;
