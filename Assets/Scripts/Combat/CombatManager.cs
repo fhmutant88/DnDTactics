@@ -33,6 +33,10 @@ namespace DnDTactics.Combat
         public Color playerColor = new Color(0.25f, 0.5f, 0.9f);
         public Color enemyColor = new Color(0.85f, 0.3f, 0.3f);
 
+        [Header("Rewards")]
+        public int encounterGoldBase = 0;   // set by EncounterSetup from the encounter's XP
+        private bool rewardsGranted = false;
+
         private TacticalGrid grid;
         private readonly Dictionary<GridCoord, Combatant> occupancy = new();
         private readonly List<Combatant> combatants = new();
@@ -414,7 +418,40 @@ namespace DnDTactics.Combat
             bool playersLeft = combatants.Exists(c => c.Team == Team.Player);
             bool enemiesLeft = combatants.Exists(c => c.Team == Team.Enemy);
             if (!playersLeft) Debug.Log("=== DEFEAT — all heroes are down. ===");
-            else if (!enemiesLeft) Debug.Log("=== VICTORY — all enemies defeated! ===");
+            else if (!enemiesLeft)
+            {
+                Debug.Log("=== VICTORY — all enemies defeated! ===");
+                if (!rewardsGranted) { rewardsGranted = true; GrantVictoryRewards(); }
+            }
+        }
+        void GrantVictoryRewards()
+        {
+            var slot = DnDTactics.Core.GameSession.Instance != null
+                ? DnDTactics.Core.GameSession.Instance.ActiveSlot : null;
+            if (slot == null) { Debug.Log("Victory! (No active slot — no rewards saved.)"); return; }
+
+            // Determine the leader (the active character who receives rewards).
+            string leaderId = slot.party.EnsureLeader(slot.barracks);
+            var leader = leaderId != null ? slot.barracks.GetById(leaderId) : null;
+            if (leader == null) { Debug.Log("Victory! (No living leader to receive rewards.)"); return; }
+
+            // Gold: scaled to the fight, ±20% variance, to the LEADER's purse.
+            int baseGold = Mathf.Max(10, encounterGoldBase);
+            int gold = Mathf.RoundToInt(baseGold * UnityEngine.Random.Range(0.8f, 1.2f));
+            leader.gold += gold;
+
+            // Item drop to the leader's inventory.
+            string drop = null;
+            float roll = UnityEngine.Random.value;
+            if (roll < 0.15f) drop = "RevivifyDiamond";
+            else if (roll < 0.50f) drop = "HealingPotion";
+            if (drop != null) leader.inventory.Add(drop, 1);
+
+            DnDTactics.Core.GameSession.Instance.SaveActive();
+            Debug.Log($"VICTORY! {leader.character.characterName} (leader) earned {gold} gold " +
+                      $"(their purse: {leader.gold})" +
+                      (drop != null ? $", found 1x {drop}." : ".") +
+                      " Redistribute via the transfer screen.");
         }
     }
 }

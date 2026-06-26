@@ -12,8 +12,7 @@ namespace DnDTactics.Persistence
         public const int MaxSize = 4;
 
         public List<string> memberIds = new();  // GUIDs into the slot's barracks
-        public int gold;
-
+        
         // Run state (used once runs are wired up).
         public int dungeonSeed;
         public int runDepth;       // how many encounters deep this run is
@@ -21,6 +20,25 @@ namespace DnDTactics.Persistence
 
         public int Size => memberIds.Count;
         public bool IsFull => memberIds.Count >= MaxSize;
+        public string leaderId;  // the "active" character; gold rewards land here, pays fees
+
+        // Ensures there's a valid leader among the deployed members; picks the first if needed.
+        public string EnsureLeader(Barracks barracks)
+        {
+            bool valid = !string.IsNullOrEmpty(leaderId) &&
+                         memberIds.Contains(leaderId) &&
+                         barracks.GetById(leaderId) != null;
+            if (!valid)
+                leaderId = LivingMembers(barracks).Select(m => m.id).FirstOrDefault();
+            return leaderId;
+        }
+
+        public bool SetLeader(string memberId)
+        {
+            if (!memberIds.Contains(memberId)) return false;
+            leaderId = memberId;
+            return true;
+        }
 
         // ---- forming the party (operates against the slot's barracks) ----
 
@@ -60,7 +78,7 @@ namespace DnDTactics.Persistence
         public PartyData ToData() => new PartyData
         {
             memberIds = new List<string>(memberIds),
-            gold = gold,
+            leaderId = leaderId,
             dungeonSeed = dungeonSeed,
             runDepth = runDepth,
             difficulty = difficulty
@@ -71,7 +89,7 @@ namespace DnDTactics.Persistence
             var p = new Party();
             if (d == null) return p;
             p.memberIds = d.memberIds != null ? new List<string>(d.memberIds) : new List<string>();
-            p.gold = d.gold;
+            p.leaderId = d.leaderId;
             p.dungeonSeed = d.dungeonSeed;
             p.runDepth = d.runDepth;
             p.difficulty = d.difficulty;
@@ -83,7 +101,7 @@ namespace DnDTactics.Persistence
     public class PartyData
     {
         public List<string> memberIds = new();
-        public int gold;
+        public string leaderId;
         public int dungeonSeed;
         public int runDepth;
         public string difficulty;

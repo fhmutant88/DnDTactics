@@ -25,3 +25,30 @@ resolved on load via Assets/Resources/ContentDatabase.asset.
 - Upgrade path if needed later: add an explicit string `id` field to content SOs
   and key the database on that instead, decoupling save identity from filename.
 - Remember to add new Species/Classes/Backgrounds to the ContentDatabase lists.
+
+## Exploration & progression layer (future milestone — NOT the current economy work)
+A major deferred system. Captured now so the economy/movement decisions stay compatible.
+
+- Party physically explores the generated dungeon map BETWEEN encounters, rather than
+  loading straight into a fight. The map already generates as full tile rooms/corridors,
+  so this layer sits on top of existing procgen.
+- Group vs. individual movement (BG3-style): party travels together with a designated
+  LEADER (the "active" character), then splits into individual tactical movement once
+  combat begins. Needs a group/ungroup toggle.
+- Discovery-driven content for "what's around the next corner" tension:
+  - Traps (hidden until detected/triggered)
+  - Treasure chests (lootable piles placed by generation)
+  - Wandering/random monsters encountered via exploration, not all spawned up front
+  - Encounters TRIGGER on movement/proximity instead of starting immediately
+- Goal: a sense of foreboding and exploration, not a fight-simulator. No authored story
+  required — tension comes from procedural discovery.
+
+## Gold/economy ownership (DECIDED — building now)
+- Gold is PER-CHARACTER (lives on each BarracksMember, travels with them between parties).
+- Items are PER-CHARACTER inventories (travel with the character).
+- A party-level "leader"/active-character reference designates who pays (e.g. town healer).
+- Combat loot: items drop on the dead character's cell as a lootable pile; a living
+  character picks them up on their turn when on/adjacent (free "interact" action).
+- Out-of-combat: menu-based transfer of gold/items between members (incl. revival payment:
+  move gold to the leader, leader pays).
+- NO carrying-capacity limits yet (add encumbrance later if desired).

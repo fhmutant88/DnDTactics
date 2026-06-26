@@ -92,6 +92,7 @@ namespace DnDTactics.Procgen
                 combat.SpawnMonster(enc.monsters[i], placement.enemySpawns[i]);
 
             // 6. Fight!
+            combat.encounterGoldBase = enc.totalXp;
             combat.StartExternalEncounter();
         }
 

@@ -17,6 +17,8 @@ namespace DnDTactics.Characters
         public string id;
         public Character character;
         public MemberStatus status;
+        public int gold;
+        public Inventory inventory = new Inventory();
 
         public BarracksMember(Character character, string id = null)
         {
@@ -35,5 +37,7 @@ namespace DnDTactics.Characters
         public string id;
         public int status;          // (int)MemberStatus
         public CharacterData character;
+        public int gold;
+        public Inventory inventory;
     }
 }

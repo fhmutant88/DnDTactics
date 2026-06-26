@@ -41,6 +41,8 @@ namespace DnDTactics.Characters
                 {
                     id = m.id,
                     status = (int)m.status,
+                    gold = m.gold,
+                    inventory = m.inventory,
                     character = CharacterSerialization.ToData(m.character)
                 });
             }
@@ -58,6 +60,8 @@ namespace DnDTactics.Characters
                 {
                     status = (MemberStatus)md.status
                 };
+                member.gold = md.gold;
+                member.inventory = md.inventory ?? new Inventory();
                 b.members.Add(member);
             }
             return b;
