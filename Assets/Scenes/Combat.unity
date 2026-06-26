@@ -515,6 +515,7 @@ MonoBehaviour:
   playerClass: {fileID: 11400000, guid: a74746260db2ef545992e3503a190ca3, type: 2}
   enemyClass: {fileID: 11400000, guid: b23fdd7dba523e84b95987e10be84b8b, type: 2}
   background: {fileID: 11400000, guid: efaabda4d08e18b4289e7fd7fcfaf44f, type: 2}
+  useExternalSetup: 0
   playerWeapon: {fileID: 11400000, guid: 2e77f0a11ad8f3b49b32d515060cf0a5, type: 2}
   enemyWeapon: {fileID: 11400000, guid: 2e77f0a11ad8f3b49b32d515060cf0a5, type: 2}
   playerColor: {r: 0.25, g: 0.5, b: 0.9, a: 1}
