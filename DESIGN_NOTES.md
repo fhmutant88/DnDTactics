@@ -16,3 +16,12 @@ Deferred — belongs with the future Elevation & Terrain system.
   top, not a rules change.
 - Clusters with: difficult terrain, height, cover, climb/fly speeds.
 - Architecture already supports the rules-level version; no changes needed now.
+
+## Save identity = content asset filename
+Saves reference Species/Class/Background by the asset's filename (its .name),
+resolved on load via Assets/Resources/ContentDatabase.asset.
+- DO NOT rename content asset files once real saves exist, or those saves can't
+  re-link that reference. (Add new assets freely; just don't rename existing ones.)
+- Upgrade path if needed later: add an explicit string `id` field to content SOs
+  and key the database on that instead, decoupling save identity from filename.
+- Remember to add new Species/Classes/Backgrounds to the ContentDatabase lists.

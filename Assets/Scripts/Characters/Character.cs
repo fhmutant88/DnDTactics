@@ -88,6 +88,14 @@ namespace DnDTactics.Characters
             currentHP = System.Math.Min(MaxHP, currentHP + amount);
         }
 
+        // Restore exact saved state after construction (used by save/load).
+        public void RestoreState(int xp, int hp, bool down)
+        {
+            currentXp = xp;
+            currentHP = hp;
+            IsDown = down;
+        }
+
         // Monster support: override derived stats with flat values from MonsterStats.
         private int? hpOverride, acOverride, speedOverride;
 

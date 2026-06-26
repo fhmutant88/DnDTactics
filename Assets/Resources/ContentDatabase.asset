@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51ecefacf6744114aaa359f95064a18e, type: 3}
+  m_Name: ContentDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.ContentDatabase
+  species:
+  - {fileID: 11400000, guid: e5887f6a2760d994b8e72c6f13e50146, type: 2}
+  - {fileID: 11400000, guid: 8bc0afb17793a1e4bb80ac4e314647e5, type: 2}
+  classes:
+  - {fileID: 11400000, guid: a74746260db2ef545992e3503a190ca3, type: 2}
+  - {fileID: 11400000, guid: b23fdd7dba523e84b95987e10be84b8b, type: 2}
+  backgrounds:
+  - {fileID: 11400000, guid: bb5bbbf562d305e45b7c5b8013174108, type: 2}
+  - {fileID: 11400000, guid: deff452528b15594ab2e31ff488cbf74, type: 2}
+  - {fileID: 11400000, guid: 4f0154ff1a0f8b347bba2940f665d8b7, type: 2}
+  - {fileID: 11400000, guid: efaabda4d08e18b4289e7fd7fcfaf44f, type: 2}
