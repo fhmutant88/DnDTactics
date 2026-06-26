@@ -123,10 +123,15 @@ namespace DnDTactics.Combat
             var active = turnOrder.Current?.combatant;
             bool playerTurn = active != null && active.Team == Team.Player;
 
-            if (Input.GetMouseButtonDown(0)) HandleClick();              // left: select / move
-            if (playerTurn && Input.GetMouseButtonDown(1)) HandleAttackClick(); // right: attack (player only)
-            if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();        // pass (player only)
+            if (Input.GetMouseButtonDown(0) && !PointerOverUI()) HandleClick();
+            if (playerTurn && Input.GetMouseButtonDown(1) && !PointerOverUI()) HandleAttackClick();
+            if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();
         }
+
+        // True when the mouse is over a UI element, so game clicks don't bleed through it.
+        bool PointerOverUI() =>
+            UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
         void HandleClick()
         {
@@ -191,6 +196,21 @@ namespace DnDTactics.Combat
         // Occupancy queries — movement (next pieces) will lean on these.
         public bool IsOccupied(GridCoord c) => occupancy.ContainsKey(c);
         public Combatant GetOccupant(GridCoord c) => occupancy.TryGetValue(c, out var x) ? x : null;
+
+        // ---- HUD read access (additive) ----
+        public IReadOnlyList<Combatant> Combatants => combatants;
+        public Combatant Selected => selected;
+        public Combatant ActiveCombatant => turnOrder?.Current?.combatant;
+        public int CurrentRound => turnOrder != null ? turnOrder.Round : 0;
+        public bool IsPlayerTurn => ActiveCombatant != null && ActiveCombatant.Team == Team.Player;
+        public int ActiveMovementRemaining => resources != null ? resources.MovementRemaining : 0;
+        public bool ActiveActionAvailable => resources != null && resources.ActionAvailable;
+
+        // The End Turn button calls this; enemies still end their own turns.
+        public void RequestEndTurn()
+        {
+            if (IsPlayerTurn) EndTurn();
+        }
 
         void LogInitiative()
         {
