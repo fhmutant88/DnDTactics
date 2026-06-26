@@ -9,6 +9,7 @@ namespace DnDTactics.Persistence
         public string slotFileId;   // the filename id (stable, generated once)
         public string displayName;  // player-chosen name, shown in the UI
         public Barracks barracks = new();
+        public Party party = new();
 
         public SaveSlot(string displayName, string slotFileId = null)
         {
@@ -22,13 +23,15 @@ namespace DnDTactics.Persistence
             slotFileId = slotFileId,
             displayName = displayName,
             savedAtUtc = DateTime.UtcNow.ToString("o"),
-            barracks = barracks.ToData()
+            barracks = barracks.ToData(),
+            party = party.ToData()
         };
 
         public static SaveSlot FromData(SaveSlotData d)
         {
             var slot = new SaveSlot(d.displayName, d.slotFileId);
             slot.barracks = Barracks.FromData(d.barracks);
+            slot.party = Party.FromData(d.party);
             return slot;
         }
     }
@@ -40,5 +43,6 @@ namespace DnDTactics.Persistence
         public string displayName;
         public string savedAtUtc;   // for "last played" display + sorting
         public BarracksData barracks;
+        public PartyData party;
     }
 }
