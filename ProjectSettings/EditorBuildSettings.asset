@@ -26,6 +26,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Roster.unity
     guid: 925cb989323321546aa5b3e73215c621
+  - enabled: 1
+    path: Assets/Scenes/Transfer.unity
+    guid: f47ffd96ade1ab140ad67a4349f552d6
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

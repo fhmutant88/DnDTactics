@@ -134,6 +134,9 @@ namespace DnDTactics.UI
             MakeButton("Main Menu", new Vector2(0.5f, 0f), new Vector2(330, 40),
                 new Vector2(180, 52), new Color(0.4f, 0.4f, 0.45f),
                 () => SceneFlow.Go(SceneFlow.MainMenu));
+            MakeButton("Transfer", new Vector2(0.5f, 0f), new Vector2(-330, 40),
+                new Vector2(180, 52), new Color(0.35f, 0.3f, 0.5f),
+                () => SceneFlow.Go(SceneFlow.Transfer));
         }
 
         void MakeMemberRow(BarracksMember m, float y)

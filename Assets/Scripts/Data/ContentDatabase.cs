@@ -12,10 +12,12 @@ namespace DnDTactics.Data
         public List<Species> species = new();
         public List<CharacterClass> classes = new();
         public List<Background> backgrounds = new();
+        public List<ItemDefinition> items = new();
 
         public Species GetSpecies(string id) => Find(species, id);
         public CharacterClass GetClass(string id) => Find(classes, id);
         public Background GetBackground(string id) => Find(backgrounds, id);
+        public ItemDefinition GetItem(string id) => Find(items, id);
 
         // We key by the asset's filename (its .name).
         static T Find<T>(List<T> list, string id) where T : Object

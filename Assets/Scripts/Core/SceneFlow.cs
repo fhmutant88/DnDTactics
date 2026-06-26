@@ -10,6 +10,7 @@ namespace DnDTactics.Core
         public const string MainMenu = "MainMenu";
         public const string CharacterCreation = "CharacterCreation";
         public const string Roster = "Roster";
+        public const string Transfer = "Transfer";
         public const string Encounter = "Encounter";
 
         public static void Go(string sceneName) => SceneManager.LoadScene(sceneName);
