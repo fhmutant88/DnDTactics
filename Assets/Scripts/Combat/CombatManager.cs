@@ -56,6 +56,14 @@ namespace DnDTactics.Combat
             return SpawnExisting(character, Team.Player, coord, playerColor, playerWeapon);
         }
 
+        // Spawn a deployed party hero, remembering which barracks member it is.
+        public Combatant SpawnPartyHero(Character character, GridCoord coord, string memberId)
+        {
+            var c = SpawnExisting(character, Team.Player, coord, playerColor, playerWeapon);
+            if (c != null) c.SetBarracksMemberId(memberId);
+            return c;
+        }
+
         // External setup: spawn a monster from MonsterStats at a coord.
         public Combatant SpawnMonster(DnDTactics.Data.MonsterStats stats, GridCoord coord)
         {
@@ -372,7 +380,7 @@ namespace DnDTactics.Combat
                 if (target.Character.IsDown) DropCombatant(target);
             }
 
-            RefreshMovementRange();
+             RefreshMovementRange();
         }
 
         void DropCombatant(Combatant c)
@@ -381,6 +389,22 @@ namespace DnDTactics.Combat
             occupancy.Remove(c.Coord);
             combatants.Remove(c);
             turnOrder.Remove(c);
+
+            // If this was a deployed party hero, mark them Down in the active slot's barracks.
+            if (!string.IsNullOrEmpty(c.BarracksMemberId))
+            {
+                var slot = DnDTactics.Core.GameSession.Instance != null
+                    ? DnDTactics.Core.GameSession.Instance.ActiveSlot : null;
+                var member = slot != null ? slot.barracks.GetById(c.BarracksMemberId) : null;
+                if (member != null)
+                {
+                    member.status = DnDTactics.Characters.MemberStatus.Down;
+                    member.character.TakeDamage(99999); // ensure their saved HP reflects downing
+                    DnDTactics.Core.GameSession.Instance.SaveActive();
+                    Debug.Log($"{member.character.characterName} marked Down in the barracks (saved).");
+                }
+            }
+
             Destroy(c.gameObject);
             CheckForVictory();
         }

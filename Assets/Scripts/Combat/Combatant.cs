@@ -15,6 +15,11 @@ namespace DnDTactics.Combat
         public Weapon Weapon { get; private set; }
         public void SetWeapon(Weapon weapon) => Weapon = weapon;
 
+        // If this combatant is a deployed party hero, the id of its BarracksMember.
+        // Null/empty for monsters and test combatants.
+        public string BarracksMemberId { get; private set; }
+        public void SetBarracksMemberId(string id) => BarracksMemberId = id;
+
         private Renderer bodyRenderer;
         private Color baseColor;
         private MaterialPropertyBlock mpb;
