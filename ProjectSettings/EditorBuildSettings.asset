@@ -29,6 +29,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Transfer.unity
     guid: f47ffd96ade1ab140ad67a4349f552d6
+  - enabled: 1
+    path: Assets/Scenes/Exploration.unity
+    guid: 5139fb49d95e3c44588c6cba5d276e0b
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

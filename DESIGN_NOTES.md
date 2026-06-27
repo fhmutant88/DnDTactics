@@ -83,3 +83,25 @@ A major deferred system. Captured now so the economy/movement decisions stay com
 - Build conditions as a general system (a list of active conditions, each with its own clear
   rule + combat effect). The Raise Dead recovery counter is the first instance of this pattern.
 - Not needed now; capture so the penalty system is designed to generalize.
+
+## Character creation — score pool display (art-phase polish)
+- Roll-a-pool-then-assign logic works correctly (6 independent 4d6-drop-lowest, assign each once,
+  reroll = full reset). BUG FIXED: previously every stat got the same value.
+- DEFERRED: the rolled pool isn't visibly displayed yet — you assign by cycling each ability's
+  ◄ ► through the remaining values. Art phase: show the pool as on-screen dice/chips you can
+  see and (eventually) drag. A dedicated poolText element is the quick interim fix if wanted.
+
+## Exploration layer — decisions & deferred notes
+DECIDED for piece 1:
+- Camera: reuse the isometric tactical camera + grid (dungeon already drawn this way).
+- Movement: party moves as a SINGLE UNIT, free real-time movement (click a tile, party walks there),
+  no turn order outside combat. BG3-style group/individual-split control deferred.
+- Triggers: proximity/step-on. Moving onto/near a marker fires encounters/chests/traps.
+
+DEFERRED (flagged during piece 1, build later):
+- Camera angle control: let player rotate/change camera angles.
+- Wall transparency: walls that block the view of the party should fade/become transparent
+  when they occlude navigation (occlusion handling).
+- Perception rolls on discovery: traps/hidden things get a silent Perception check in the
+  background. FAIL = no notice (you might trigger it). SUCCESS = notify the player ("you spot...").
+  Needs the trap/discovery content + a perception check; wire when discoveries are built.

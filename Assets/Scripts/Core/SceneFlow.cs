@@ -12,6 +12,7 @@ namespace DnDTactics.Core
         public const string Roster = "Roster";
         public const string Transfer = "Transfer";
         public const string Encounter = "Encounter";
+        public const string Exploration = "Exploration";
 
         public static void Go(string sceneName) => SceneManager.LoadScene(sceneName);
     }
