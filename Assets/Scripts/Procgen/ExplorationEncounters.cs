@@ -110,11 +110,10 @@ namespace DnDTactics.Procgen
         {
             if (inCombat || grid == null || exploration == null) return;
 
-            GridCoord party = exploration.PartyCoord;
             foreach (var m in markers)
             {
                 if (m.triggered) continue;
-                if (Distance(party, m.cell) <= triggerRadius)
+                if (exploration.CharacterCoords.Any(c => Distance(c, m.cell) <= triggerRadius))
                 {
                     m.triggered = true;
                     TriggerEncounter(m);
@@ -125,7 +124,7 @@ namespace DnDTactics.Procgen
             foreach (var ch in chests)
             {
                 if (ch.looted) continue;
-                if (Distance(party, ch.cell) <= triggerRadius)
+                if (exploration.CharacterCoords.Any(c => Distance(c, ch.cell) <= triggerRadius))
                 {
                     ch.looted = true;
                     LootChest(ch);

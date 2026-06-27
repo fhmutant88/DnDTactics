@@ -195,3 +195,15 @@ Highest-leverage systems, build these first; the rich features above depend on t
 
 ## Chests — TRIVIAL loot version (OK to build now, standalone, no throwaway)
 - Reach a chest → gold + maybe item to leader. No lock/trap/mimic yet (those need the foundation).
+
+## Encounter triggering with individual movement (movement foundation now; staggered-join later)
+- An encounter triggers when ANY one character enters a marker's range (the scout springs it).
+  → BUILDABLE NOW with individual tokens.
+- FULL VISION (needs combat changes — DEFER): only the triggering character enters initiative
+  initially; the rest JOIN initiative as they physically arrive at the fight (mid-combat
+  reinforcement + dynamic initiative insertion). Rewards keeping the party together; punishes
+  reckless solo scouting; enables bait/ambush tactics.
+- Needs combat to support: units entering an in-progress encounter, and inserting them into the
+  initiative order on arrival. Current combat rolls initiative once for a fixed roster.
+- INTERIM (now): when an encounter triggers, bring the whole living party into the fight at once
+  (spawned near their exploration positions), as the current bridge does.
