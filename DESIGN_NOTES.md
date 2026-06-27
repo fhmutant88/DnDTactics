@@ -411,3 +411,17 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   ROOM. Otherwise looted gear is all you salvage; the character is lost.
 - Geography matters: a far fallen ally = go back + portal from their room (risky traverse through a
   possibly-repopulated dungeon) vs. cut losses, loot what you can, portal from here (lose the body).
+
+## Contents visibility = unified Layer-2 rule (chests, monsters, traps)
+- ALL "contents" (chests, lurking monsters, traps) key off the SAME check: does the SELECTED
+  character currently SEE this tile? (Vision range + darkvision + Bresenham LOS.) Mapping the room
+  (fog/union) does NOT reveal contents — only the selected character's LIVE sight does.
+- Manifestation differs by type:
+  - CHEST → show/hide a visible token (building now).
+  - MONSTER (in exploration) → show/hide a lurking token (deferred to monster-vision/AI milestone).
+  - TRAP → when the selected char sees the trap's tile, roll PERCEPTION vs. the trap's DC (random/
+    TBD per trap); success → trap revealed/flagged; failure → undetected (trigger on contact).
+    (Deferred to traps milestone — but reuses this exact sight gate + adds the detection roll.)
+- So traps = chest-style sight gate + a Perception-vs-DC roll. Same machinery, different manifestation.
+- Example: elf thief selected, sees a floor tile with a trap in darkvision LOS → rolls Perception vs DC.
+  Human selected (can't see that tile in the dark) → no roll, no detection → blunders in.

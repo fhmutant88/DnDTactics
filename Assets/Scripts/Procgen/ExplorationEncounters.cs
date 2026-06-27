@@ -35,7 +35,7 @@ namespace DnDTactics.Procgen
         public int roomsPerChest = 3;
 
         // A chest waiting in a room.
-        class Chest { public GridCoord cell; public bool looted; }
+        class Chest { public GridCoord cell; public bool looted; public GameObject token; }
         private readonly List<Chest> chests = new();
 
         // An encounter waiting in a room.
@@ -82,6 +82,20 @@ namespace DnDTactics.Procgen
             if (dungeon != null) dungeon.OnGenerated -= PlaceMarkers;
         }
 
+        Chest MakeChest(GridCoord cell)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Chest";
+            go.transform.SetParent(transform);
+            go.transform.localScale = new Vector3(0.5f, 0.4f, 0.5f);
+            go.transform.position = dungeon.Grid.CoordToWorld(cell) + Vector3.up * 0.25f;
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            mat.SetColor("_BaseColor", new Color(0.8f, 0.6f, 0.2f));
+            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            go.SetActive(false); // hidden until the selected character sees it
+            return new Chest { cell = cell, token = go };
+        }
+
         void PlaceMarkers()
         {
             markers.Clear();
@@ -106,14 +120,14 @@ namespace DnDTactics.Procgen
             for (int i = rooms.Count - 1; i >= 1 && chestsPlaced < desiredChests; i--)
             {
                 var cc = new GridCoord(rooms[i].CenterX, rooms[i].CenterY);
-                if (grid.IsWalkable(cc)) { chests.Add(new Chest { cell = cc }); chestsPlaced++; }
+                if (grid.IsWalkable(cc)) { chests.Add(MakeChest(cc)); chestsPlaced++; }
             }
 
             // Hard guarantee: if (somehow) nothing placed but rooms exist, force one chest.
             if (chests.Count == 0 && rooms.Count > 1)
             {
                 var cc = new GridCoord(rooms[1].CenterX, rooms[1].CenterY);
-                if (grid.IsWalkable(cc)) chests.Add(new Chest { cell = cc });
+                if (grid.IsWalkable(cc)) chests.Add(MakeChest(cc));
             }
             Debug.Log($"Placed {chests.Count} chest(s) in the dungeon (min {minChests}).");
         }
@@ -141,6 +155,25 @@ namespace DnDTactics.Procgen
                     ch.looted = true;
                     LootChest(ch);
                 }
+            }
+
+            UpdateChestVisibility(); // show/hide chest tokens per the selected character's sight
+        }
+
+        void UpdateChestVisibility()
+        {
+            var sel = exploration.SelectedVisionData();
+            HashSet<GridCoord> visible = null;
+            if (sel.HasValue)
+            {
+                int radius = DnDTactics.Rules.Vision.SightRadiusTiles(sel.Value.darkvisionFeet);
+                visible = DnDTactics.Rules.Vision.VisibleTiles(sel.Value.coord, radius, grid);
+            }
+            foreach (var ch in chests)
+            {
+                if (ch.token == null) continue;
+                if (ch.looted) { ch.token.SetActive(false); continue; }
+                ch.token.SetActive(visible != null && visible.Contains(ch.cell));
             }
         }
 
@@ -236,6 +269,8 @@ namespace DnDTactics.Procgen
             GameSession.Instance.SaveActive();
             Debug.Log($"Opened a chest! {leader.character.characterName} found {gold} gold" +
                       (drop != null ? $" and 1x {drop}." : "."));
+
+            if (ch.token != null) ch.token.SetActive(false); // hide the looted chest token
         }
 
         System.Collections.IEnumerator ReturnToMenuAfterDelay()
