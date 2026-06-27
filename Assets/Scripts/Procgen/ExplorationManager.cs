@@ -27,6 +27,7 @@ namespace DnDTactics.Procgen
         public bool IndividualMode => individualMode;
         public void ToggleMode() => individualMode = !individualMode;
         public string ModeName => individualMode ? "Individual" : "Group";
+        public FogOfWar fog;
 
         // The selected character's display name (for the HUD label). Empty if none/placeholder.
         public string SelectedName
@@ -61,6 +62,23 @@ namespace DnDTactics.Procgen
         // All character positions (for "any character near a marker" triggering).
         public IEnumerable<GridCoord> CharacterCoords => tokens.Select(t => t.coord);
 
+        // For fog/vision: each token's coord paired with that character's darkvision (feet).
+        public IEnumerable<(GridCoord coord, int darkvisionFeet)> CharacterVisionData()
+        {
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            foreach (var t in tokens)
+            {
+                int dv = 0;
+                if (slot != null && !string.IsNullOrEmpty(t.memberId))
+                {
+                    var m = slot.barracks.GetById(t.memberId);
+                    if (m != null && m.character != null && m.character.species != null)
+                        dv = m.character.species.darkvisionRange;
+                }
+                yield return (t.coord, dv);
+            }
+        }
+
         public void SetExploring(bool on)
         {
             exploring = on;
@@ -77,6 +95,8 @@ namespace DnDTactics.Procgen
             if (grid == null) { Debug.LogError("ExplorationManager: dungeon grid not ready."); yield break; }
 
             SpawnPartyInFirstRoom();
+            if (fog == null) fog = FindFirstObjectByType<FogOfWar>();
+            if (fog != null) fog.Recompute(); // initial reveal around the spawn
         }
 
         void SpawnPartyInFirstRoom()
@@ -166,6 +186,7 @@ namespace DnDTactics.Procgen
         {
             if (!exploring || grid == null || tokens.Count == 0) return;
             if (Input.GetMouseButtonDown(0)) HandleClick();
+            
         }
 
         void HandleClick()
@@ -244,6 +265,7 @@ namespace DnDTactics.Procgen
                     yield return null;
                 }
                 token.coord = step;
+                if (fog != null) fog.Recompute(); // update fog as the party advances
             }
             token.moving = null;
         }

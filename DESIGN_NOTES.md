@@ -215,3 +215,123 @@ Highest-leverage systems, build these first; the rich features above depend on t
 - Chest loot confirmed working (gold/item to leader on proximity).
 - NEXT: piece 2 selection (click a token to select), then Group/Individual toggle + true individual
   movement, then the group/ungroup control. Then vision/LOS/fog + traps build on individual positions.
+
+## Movement foundation — pieces 1-3 DONE
+- Piece 1: individual character tokens (one per deployed living member; leader = gold token[0],
+  others blue), spawned on adjacent cells in the first room. Group click-to-move (leader to target,
+  followers cluster). Encounters/chests trigger on ANY character's proximity (CharacterCoords).
+- Piece 2: click-to-select a token (scale-up highlight); leader pre-selected; "Selected: [name]"
+  label on the exploration HUD (ExplorationManager.SelectedName).
+- Piece 3: Group/Individual movement toggle (ExplorationManager.individualMode + ToggleMode()).
+  Group = ground-click moves whole party; Individual = ground-click moves only the selected token,
+  others hold. Mode button on the exploration HUD.
+- CombatHUD now hidden during exploration, shown only in combat (SetVisible(bool); exploration hides
+  it via a next-frame coroutine to beat the build-order race, shows it in TriggerEncounter).
+- DEFERRED piece 4: "Regroup" command (gather everyone to the leader after a split) — small finisher.
+
+## NEXT MILESTONE: vision / darkvision / line-of-sight / fog of war
+Built on the individual positions now established. The keystone that unlocks: per-character vision
+(selected character's vision/darkvision property), true line-of-sight (no seeing through walls/corners),
+fog of war (Unseen/Explored/Visible tile states), and vision-driven trap detection + rich chests.
+Lighting (torches/candles/magic, possibly randomized per dungeon) feeds vision; partly gameplay,
+not just art. Fog of war == this same vision system rendered.
+
+## Vision system — DUAL-LAYER design (KEY decision)
+Two distinct kinds of "seeing", built on the same per-character visible-tile computation
+(vision range + species darkvision + Bresenham LOS, walls block):
+
+LAYER 1 — MAP LAYOUT (party-collective, permanent once seen) = FOG OF WAR:
+- A tile's layout is EXPLORED if ANY living member has ever had LOS to it in range. Stays known.
+- Tile states: VISIBLE (in ANY member's current sight — bright) / EXPLORED (seen before, not now —
+  dimmed) / UNSEEN (never seen — hidden). Layout Visible/Explored uses the PARTY UNION.
+- Once a room's geography is seen, the party "knows the layout" permanently.
+
+LAYER 2 — LIVE CONTENTS (per-SELECTED-character, dynamic) = chests/monsters/(traps):
+- A chest/monster is SHOWN only if the CURRENTLY SELECTED character has LOS to it within THEIR
+  vision range right now. Switch characters → visible contents change to that character's POV.
+- Example: human + elf party. Both reveal a room's LAYOUT (union). But a chest 60ft away in the
+  dark is SEEN only when the elf (darkvision 60) is selected; select the human → chest hidden,
+  though the room's layout is still known.
+- Monsters in exploration are "contents" too: only the selected character sees a lurking monster
+  (scout-ahead tension). Once COMBAT triggers, all combatants visible (it's a fight).
+- Always a selected character driving contents (leader pre-selected, selection persists).
+
+ARCHITECTURE: per-character "tiles I can see now" = range + darkvision + Bresenham LOS.
+  Layout fog = UNION of all members' sets (Visible) + accumulated history (Explored).
+  Contents = the SELECTED character's set only.
+Vision range = max(baseline ambient sight, species darkvision). Real lighting deferred.
+
+## Vision system — REFINEMENTS (supersedes/clarifies above)
+FOG vs. BRIGHTNESS split (refined):
+- FOG STATE (mapped-ever?) = PARTY-COLLECTIVE and PERMANENT. A tile is "mapped" once ANY living
+  member has had LOS to it in range; stays mapped forever (you know the layout).
+- CURRENT BRIGHTNESS of mapped tiles = the SELECTED character's POV. Dark dungeon example:
+  mapped room shows as grey layout when human selected; lights up brightly within the elf's
+  darkvision range when elf selected. Union = what's mapped ever; selected = how it presents now.
+- Leader downed mid-room → brightness/contents tied to them go dark, but fog stays mapped →
+  select another living character to re-illuminate from their POV and continue. (Emergent.)
+
+MAP GENERATION MUST CHANGE (structural — do as part of fog):
+- DungeonVisualizer currently renders the ENTIRE dungeon up front → contradicts fog of war.
+- Tiles must start UNSEEN (hidden/black) and reveal as explored. The map "opens up" as you go.
+- You should NOT see the layout until you explore it.
+
+TOGGLEABLE MINIMAP HUD (later, follow-on):
+- A separate top-down overview map that fills in as you explore; toggle on/off by player preference.
+- Reads the same "what's been mapped" data as the in-world fog. Build after in-world fog works.
+
+MONSTER VISION + REACTIVE AI (later, consumes vision):
+- Monsters have their own vision/darkvision (symmetrical to the party). A darkvision monster in the
+  dark can see + act on the party before a low-vision party sees it → ambush. Dark is dangerous.
+- TYPED monster behavior/intelligence (enhances current simple EnemyAI): kobolds hang back & ambush
+  from behind traps; spiders rush; slimes passive/oblivious. Needs vision (ambush) + traps (kobold
+  positioning). Build as a combat-AI/behavior milestone AFTER vision (and alongside traps).
+
+## Darkness model + lighting sequencing (DECIDED)
+- Environment: COMMIT TO DUNGEON CRAWL. Dark dungeons where vision/light/darkvision are central.
+  Forest/city (ambient-lit) environments deferred indefinitely — don't spread scope.
+- Darkness is HARSH/atmospheric (fits the hardcore design): baseline ambient sight ~2 tiles
+  (you see your own square + immediate neighbors / adjacent party members, but nothing else in
+  the dark). NOT literally 0 (so a no-light party isn't hard-stuck and we can build/test vision
+  before lighting exists), but low enough that darkness is oppressive and light/darkvision are
+  precious.
+- Darkvision (species, ~60ft = 12 tiles) is HUGELY valuable vs. the ~2-tile baseline — the
+  contrast makes vision matter.
+- SEQUENCING: build VISION now (low baseline, testable). Then LIGHTING is the very NEXT milestone:
+  torches, magical light items, randomly-lit/unlit dungeon areas that RAISE ambient sight where lit.
+  A human (no darkvision) party will depend on carried light → torches become precious.
+
+## Vision constrains COMBAT (deferred — needs vision + lighting + AttackResolver hook)
+Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e unseen rules:
+- A character can only cleanly attack a target they can SEE (within vision/darkvision range, LOS,
+  and — later — lit). The party's map-knowledge that a monster is "there" does NOT mean you can see it.
+- Attacking an UNSEEN target (monster in darkness beyond your sight): DISADVANTAGE + must guess its
+  square. At range (bow into a dark room): effectively futile. So a human can't snipe an unlit monster
+  across the room; needs it lit or within their sight.
+- Even ADJACENT to an unseen foe: attack at disadvantage (you sense the square but can't aim).
+- Attacking FROM darkness (you unseen by the target): attacker has advantage / target defends at
+  disadvantage. Cuts both ways → darkvision monsters can ambush an unlit party at advantage.
+- Tactical payoff: keep darkvision chars forward, bring light, don't shoot into the dark. Positioning
+  + light control become combat-relevant.
+- IMPLEMENTATION (later): AttackResolver checks "can attacker see target?" (vision range + LOS + lit)
+  → applies disadvantage / blocks clean targeting. Built on vision (this milestone) + lighting (next).
+
+## CORRECTION to "vision constrains combat" — two SEPARATE rules (don't conflate):
+- RULE 1 (ranged-in-melee, NOT vision-related): firing a RANGED weapon with an enemy within 5ft
+  = disadvantage. Applies even if fully visible. "Don't shoot a bow in someone's face."
+- RULE 2 (unseen target, vision-related): attacking a target you CAN'T SEE = disadvantage + guess square.
+- So: a LIT adjacent monster → MELEE attack is NORMAL (seen + adjacent). Only a BOW at that range is
+  disadvantage (Rule 1). The earlier note wrongly implied adjacency causes a vision penalty — it does
+  not. Vision disadvantage (Rule 2) applies only when the target is genuinely UNSEEN (e.g., in darkness
+  beyond sight). A human firing a bow into a dark room at an unlit monster = BOTH rules potentially:
+  unseen (Rule 2) and, if the monster closed to melee, ranged-in-melee (Rule 1).
+
+## Isometric wall occlusion (navigation issue — deferred)
+- At the iso camera angle (30°/45°), walls with height occlude floor tiles in hallways running
+  "away" from the camera (up-down on screen) → click-raycast hits the wall, can't select those floors.
+  Left-right hallways are fine (camera sees into them).
+- FIXES (either/both, later): (1) WALL TRANSPARENCY — fade walls between camera and view area so you
+  see/click floor behind them (BG3/Diablo-style occlusion fade). (2) CAMERA control — steeper angle
+  and/or player-rotatable camera to see around walls.
+- Not blocking vision work. Revisit during a navigation/camera polish pass (pairs naturally with the
+  fog-of-war reveal, since both touch how the dungeon presents visually).
