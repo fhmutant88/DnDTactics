@@ -19,6 +19,14 @@ namespace DnDTactics.Procgen
         public float tokenYOffset = 0.6f;
         public float moveSpeed = 6f; // tiles per second along the path
 
+        public GridCoord PartyCoord => partyCoord;
+        private bool exploring = true;
+        public void SetExploring(bool on)
+        {
+            exploring = on;
+            if (!on && moving != null) { StopCoroutine(moving); moving = null; }
+        }
+
         private TacticalGrid grid;
         private GameObject partyToken;
         private GridCoord partyCoord;
@@ -78,9 +86,9 @@ namespace DnDTactics.Procgen
             return new GridCoord(0, 0);
         }
 
-                void Update()
+        void Update()
         {
-            if (grid == null || partyToken == null) return;
+            if (!exploring || grid == null || partyToken == null) return;
             if (Input.GetMouseButtonDown(0)) HandleClick();
         }
 

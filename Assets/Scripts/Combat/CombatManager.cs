@@ -37,6 +37,14 @@ namespace DnDTactics.Combat
         public int encounterGoldBase = 0;   // set by EncounterSetup from the encounter's XP
         private bool rewardsGranted = false;
 
+        [Header("Encounter lifecycle")]
+        public bool startDormant = false;   // exploration sets this; combat waits to be triggered
+        private bool encounterConcluded = false;
+        private bool encounterRunning = false;   // ← add this line here
+
+        // Fires once when the encounter resolves. bool = player victory.
+        public event System.Action<bool> OnEncounterEnded;
+
         private TacticalGrid grid;
         private readonly Dictionary<GridCoord, Combatant> occupancy = new();
         private readonly List<Combatant> combatants = new();
@@ -107,11 +115,17 @@ namespace DnDTactics.Combat
         public void StartExternalEncounter()
         {
             if (combatants.Count == 0) { Debug.LogError("No combatants to fight."); return; }
+            encounterRunning = true;
+            encounterConcluded = false;
+            rewardsGranted = false;
             BeginEncounter();
         }
 
         void Start()
         {
+            Debug.Log($"CombatManager.Start on '{gameObject.name}' — startDormant={startDormant}");
+            if (startDormant) return; // exploration drives setup/start manually
+
             if (gridVisualizer != null) grid = gridVisualizer.Grid;
             if (grid == null)
             {
@@ -132,6 +146,7 @@ namespace DnDTactics.Combat
 
         void Update()
         {
+            if (!encounterRunning) return; // ignore combat input outside an active encounter
             var active = turnOrder.Current?.combatant;
             bool playerTurn = active != null && active.Team == Team.Player;
 
@@ -414,18 +429,35 @@ namespace DnDTactics.Combat
             Destroy(c.gameObject);
             CheckForVictory();
         }
-
+        
         void CheckForVictory()
         {
             bool playersLeft = combatants.Exists(c => c.Team == Team.Player);
             bool enemiesLeft = combatants.Exists(c => c.Team == Team.Enemy);
-            if (!playersLeft) Debug.Log("=== DEFEAT — all heroes are down. ===");
+
+            if (!playersLeft)
+            {
+                Debug.Log("=== DEFEAT — all heroes are down. ===");
+                ConcludeEncounter(false);
+            }
             else if (!enemiesLeft)
             {
                 Debug.Log("=== VICTORY — all enemies defeated! ===");
                 if (!rewardsGranted) { rewardsGranted = true; GrantVictoryRewards(); }
+                ConcludeEncounter(true);
             }
         }
+
+        // Resolve the encounter once: clear state, notify listeners (exploration).
+        void ConcludeEncounter(bool victory)
+        {
+            if (encounterConcluded) return;
+            encounterConcluded = true;
+            encounterRunning = false;
+            if (highlighter) highlighter.Clear();
+            OnEncounterEnded?.Invoke(victory);
+        }
+
         void GrantVictoryRewards()
         {
             var slot = DnDTactics.Core.GameSession.Instance != null
@@ -454,6 +486,19 @@ namespace DnDTactics.Combat
                       $"(their purse: {leader.gold})" +
                       (drop != null ? $", found 1x {drop}." : ".") +
                       " Redistribute via the transfer screen.");
+        }
+
+        // Remove all combatants/occupancy so the manager is ready for the next encounter.
+        public void ClearEncounter()
+        {
+            foreach (var c in combatants)
+                if (c != null) Destroy(c.gameObject);
+            combatants.Clear();
+            occupancy.Clear();
+            turnOrder = new TurnOrder();
+            selected = null;
+            encounterRunning = false;
+            if (highlighter) highlighter.Clear();
         }
     }
 }

@@ -105,3 +105,33 @@ DEFERRED (flagged during piece 1, build later):
 - Perception rolls on discovery: traps/hidden things get a silent Perception check in the
   background. FAIL = no notice (you might trigger it). SUCCESS = notify the player ("you spot...").
   Needs the trap/discovery content + a perception check; wire when discoveries are built.
+
+## Fog of war (exploration — build later, design now)
+The full dungeon must NOT be visible on entry — core to the "what's around the corner" tension.
+- Tiles start HIDDEN; revealed as the party explores (sight radius around the party, and/or
+  revealing a room when entered).
+- Likely THREE states per tile: Unseen (hidden/black), Explored (seen before, dimmed — you
+  remember the layout but not current contents), Visible (currently in sight, fully lit).
+- Discoveries (encounters/chests/traps) should be hidden under fog until revealed/perceived —
+  pairs directly with the deferred Perception-roll mechanic (silent check; success reveals).
+- Interacts with deferred wall-transparency (occluding walls fade) and camera-angle control.
+- Implementation note: DungeonVisualizer currently renders ALL floors + border walls up front.
+  Fog will need tile renderers toggled/tinted by visibility state, so consider keeping per-tile
+  GameObject refs (or a visibility layer) when we build it. Not now — piece 1 shows the full map.
+
+## Save model (Model B) + TPK — DECIDED, building now
+- TWO files per slot: autosave (live, always current, overwrites) + ONE manual save (player-controlled).
+- Autosave = where you are (incl. deaths). Manual save = a deliberate checkpoint/fallback.
+- Loading the manual save OVERWRITES the autosave (rewind-and-continue: checkpoint becomes live state).
+- "Save Game" (manual save) is TOWN-ONLY (Roster). Unlimited overwrites of the one manual slot.
+- Once you launch a run you are LOCKED IN — no save options mid-dungeon.
+- TPK (all deployed members dead, no survivors): the run/party + everything they carried is LOST.
+  Autosave persists the wipe. Recourse = Load Manual Save (if one exists). Else loss stands.
+  TPK routes to MainMenu with a "your party has fallen" message.
+- One survivor = party salvageable (can revive fallen via existing revival system).
+
+## Sanctuary portal — strategic role clarified (build with exploration, still deferred)
+- The portal is the ONLY way to bank progress mid-run: saving is town-only, so portaling out
+  (exploration → town) is what lets you then manual-save and lock in gains.
+- Risk/reward: push deeper (committed, no save) vs. portal out (bank progress, can save).
+- Each character starts with one Portal Scroll (consumable). Build with exploration/portal piece.

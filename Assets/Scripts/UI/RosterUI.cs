@@ -137,7 +137,16 @@ namespace DnDTactics.UI
         void Launch()
         {
             GameSession.Instance.SaveActive();
-            SceneFlow.Go(SceneFlow.Encounter);
+            SceneFlow.Go(SceneFlow.Exploration);   // ← the new continuous dungeon
+        }
+
+        void SaveGame()
+        {
+            if (Slot == null) return;
+            GameSession.Instance.SaveActive();   // ensure autosave is current first
+            DnDTactics.Persistence.SaveManager.SaveManual(Slot);
+            if (headerText != null)
+                headerText.text = $"{Slot.displayName} — Game saved! (manual checkpoint)";
         }
 
         // ---------- building ----------
@@ -189,6 +198,8 @@ namespace DnDTactics.UI
                 () => SceneFlow.Go(SceneFlow.Transfer));
             MakeButton("Long Rest", new Vector2(0.5f, 0f), new Vector2(-540, 40),
                 new Vector2(170, 52), new Color(0.3f, 0.45f, 0.55f), TakeLongRest);
+            MakeButton("Save Game", new Vector2(0.5f, 0f), new Vector2(-540, 100),
+                new Vector2(170, 52), new Color(0.45f, 0.4f, 0.2f), SaveGame);
         }
 
         void MakeMemberRow(BarracksMember m, float y)

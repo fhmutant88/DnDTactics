@@ -294,6 +294,60 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &864831378
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 864831380}
+  - component: {fileID: 864831379}
+  m_Layer: 0
+  m_Name: ExplorationEncounters
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &864831379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 864831378}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2f7cefb7a9bf0341947d1797092f888, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Procgen.ExplorationEncounters
+  exploration: {fileID: 116874429}
+  dungeon: {fileID: 1004758472}
+  combat: {fileID: 2014721752}
+  monsterPool:
+  - {fileID: 11400000, guid: d07f75629a0d0644ab877f5c43337aa8, type: 2}
+  - {fileID: 11400000, guid: cf69218554d2a594baebbcb8bde7984e, type: 2}
+  - {fileID: 11400000, guid: d388e4247de83e143b62c7a87a4352c6, type: 2}
+  - {fileID: 11400000, guid: 366a235a7868a3249b84168ca1444705, type: 2}
+  encounterCount: 3
+  triggerRadius: 2
+--- !u!4 &864831380
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 864831378}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.00008, y: -0, z: -0.00032}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &961739749
 GameObject:
   m_ObjectHideFlags: 0
@@ -486,6 +540,156 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1973380941
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1973380943}
+  - component: {fileID: 1973380942}
+  m_Layer: 0
+  m_Name: CombatHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1973380942
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1973380941}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ff87df040580d6448455dd3b5084900, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.UI.CombatHUD
+  combat: {fileID: 2014721752}
+  hpBarWorldYOffset: 2.2
+--- !u!4 &1973380943
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1973380941}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.00008, y: -0, z: -0.00032}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2014721751
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2014721753}
+  - component: {fileID: 2014721752}
+  m_Layer: 0
+  m_Name: CombatManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2014721752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2014721751}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ebf8fed406f1704aa2b89f0f1f7c961, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Combat.CombatManager
+  gridVisualizer: {fileID: 0}
+  tokenYOffset: 0.9
+  species: {fileID: 11400000, guid: e5887f6a2760d994b8e72c6f13e50146, type: 2}
+  playerClass: {fileID: 11400000, guid: a74746260db2ef545992e3503a190ca3, type: 2}
+  enemyClass: {fileID: 11400000, guid: b23fdd7dba523e84b95987e10be84b8b, type: 2}
+  background: {fileID: 11400000, guid: efaabda4d08e18b4289e7fd7fcfaf44f, type: 2}
+  useExternalSetup: 0
+  playerWeapon: {fileID: 11400000, guid: 2e77f0a11ad8f3b49b32d515060cf0a5, type: 2}
+  enemyWeapon: {fileID: 11400000, guid: 2e77f0a11ad8f3b49b32d515060cf0a5, type: 2}
+  playerColor: {r: 0.25, g: 0.5, b: 0.9, a: 1}
+  enemyColor: {r: 0.85, g: 0.3, b: 0.3, a: 1}
+  encounterGoldBase: 0
+  startDormant: 1
+  highlighter: {fileID: 0}
+--- !u!4 &2014721753
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2014721751}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.00008, y: -0, z: -0.00032}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2027968135
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2027968137}
+  - component: {fileID: 2027968136}
+  m_Layer: 0
+  m_Name: Highlighter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2027968136
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027968135}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f63aacc0d9aacbe42bdff733364b7234, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Combat.CellHighlighter
+  moveColor: {r: 0.3, g: 0.7, b: 1, a: 0.45}
+  yHeight: 0.12
+--- !u!4 &2027968137
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2027968135}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.00008, y: -0, z: -0.00032}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -494,3 +698,7 @@ SceneRoots:
   - {fileID: 203844589}
   - {fileID: 1004758473}
   - {fileID: 116874430}
+  - {fileID: 2014721753}
+  - {fileID: 2027968137}
+  - {fileID: 864831380}
+  - {fileID: 1973380943}
