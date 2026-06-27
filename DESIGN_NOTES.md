@@ -52,3 +52,34 @@ A major deferred system. Captured now so the economy/movement decisions stay com
 - Out-of-combat: menu-based transfer of gold/items between members (incl. revival payment:
   move gold to the leader, leader pays).
 - NO carrying-capacity limits yet (add encumbrance later if desired).
+
+## Town & economy expansion (future — beyond current revival work)
+- TOWN as a hub: restock, heal, and a SHOP to buy goods/armor/weapons/diamonds.
+  Town healer (built) is the first piece; shop is a later system (catalog + pricing + UI).
+- Revival DIAMONDS enter inventory via: (a) exploration loot (random, ~uncommon rarity),
+  or (b) purchase at the town shop. Characters do NOT start with diamonds.
+  (Field-revival code consumes diamonds from inventory regardless of source — forward-compatible.)
+- STARTING GOLD at character creation, allotted by class + background, spent on an initial
+  equipment loadout. Requires the equipment/shop system to exist first. Capture now, build later.
+- SANCTUARY PORTAL reconceived as a consumable "Portal Scroll": each character STARTS with one.
+  Instantly leaves exploration → returns to town. Build with the sanctuary-portal piece.
+
+## Field revival — gating & penalty (current build = simplified, upgrade later)
+- CASTER GATE (deferred): full rule requires a living member who has Revivify/Raise Dead
+  PREPARED, or consumes a revival SCROLL — PLUS the diamond. Needs the spellcasting system
+  (prepared spells) + a scroll item type, both deferred. FOR NOW: gate on the DIAMOND only
+  (any party with the right diamond can revive). Add the prepared-spell/scroll check when
+  spellcasting is built.
+- RAISE DEAD PENALTY: full 5e fidelity desired (−4 to all d20 rolls, recovering 1 per long
+  rest over 4 long rests). BUILD NOW: store the penalty as a recovery counter on the character
+  that ticks down over 4 long rests (the "stay in barracks 4 rests to be normal" mechanic).
+  WIRE LATER: apply the actual −4 to combat d20 rolls when next in the combat-rolls code.
+  Intent: exploring before the penalty clears should really hurt.
+
+## Persistent character conditions (future — pattern established by Raise Dead penalty)
+- Conditions persist on the character until cleared by their specific condition (rest, treatment, etc.).
+- Example: POISONED — if a character is barracked while poisoned and untreated, the poison
+  persists until TREATED (not just rested). Show a "sick"/condition tag on the character card.
+- Build conditions as a general system (a list of active conditions, each with its own clear
+  rule + combat effect). The Raise Dead recovery counter is the first instance of this pattern.
+- Not needed now; capture so the penalty system is designed to generalize.

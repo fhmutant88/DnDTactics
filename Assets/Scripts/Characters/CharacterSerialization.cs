@@ -18,6 +18,7 @@ namespace DnDTactics.Characters
                 currentXp = c.currentXp,
                 currentHP = c.currentHP,
                 isDown = c.IsDown,
+                raiseDeadPenalty = c.raiseDeadPenalty,
                 baseScores = (int[])c.abilities.baseScores.Clone(),
                 backgroundBonuses = (int[])c.abilities.backgroundBonuses.Clone()
             };
@@ -42,6 +43,7 @@ namespace DnDTactics.Characters
             // otherwise reset HP to full and XP to the level floor).
             var c = new Character(d.characterName, species, cls, bg, abilities, d.level);
             c.RestoreState(d.currentXp, d.currentHP, d.isDown);
+            c.raiseDeadPenalty = d.raiseDeadPenalty;
             return c;
         }
     }

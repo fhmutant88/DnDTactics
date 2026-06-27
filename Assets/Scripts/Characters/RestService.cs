@@ -20,6 +20,7 @@ namespace DnDTactics.Characters
 
             foreach (var m in slot.barracks.members)
             {
+                m.character.TickLongRestRecovery(); // Raise Dead penalty recovers 1 per long rest
                 if (m.IsAlive)
                 {
                     // Long rest restores HP to full for living members.

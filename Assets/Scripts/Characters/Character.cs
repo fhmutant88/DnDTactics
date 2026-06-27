@@ -103,6 +103,20 @@ namespace DnDTactics.Characters
             IsDown = false;
         }
 
+        // Raise Dead penalty: counts down 1 per long rest, 4 rests to clear.
+        // (The actual -4 to d20 rolls gets wired into combat math later.)
+        public int raiseDeadPenalty;   // 0 = none
+
+        public void ApplyRaiseDeadPenalty() => raiseDeadPenalty = 4;
+
+        // Called on each long rest; reduces the penalty toward 0.
+        public void TickLongRestRecovery()
+        {
+            if (raiseDeadPenalty > 0) raiseDeadPenalty--;
+        }
+
+        public bool HasRaiseDeadPenalty => raiseDeadPenalty > 0;
+
         // Monster support: override derived stats with flat values from MonsterStats.
         private int? hpOverride, acOverride, speedOverride;
 

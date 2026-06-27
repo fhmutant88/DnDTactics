@@ -102,6 +102,30 @@ namespace DnDTactics.UI
             Refresh();
         }
 
+        void FieldReviveMember(BarracksMember m)
+        {
+            var result = DnDTactics.Characters.RevivalService.FieldRevive(m, Slot.party, Slot.barracks);
+            Debug.Log(result.message);
+            if (result.success) GameSession.Instance.SaveActive();
+            Refresh();
+        }
+
+        // Raise Dead penalty: counts down 1 per long rest, 4 rests to clear.
+        // (The actual -4 to d20 rolls gets wired into combat math later.)
+        public int raiseDeadPenalty;   // 0 = none
+
+        public void ApplyRaiseDeadPenalty() => raiseDeadPenalty = 4;
+
+        // Called on each long rest; reduces the penalty toward 0.
+        public void TickLongRestRecovery()
+        {
+            if (raiseDeadPenalty > 0) raiseDeadPenalty--;
+        }
+
+        public bool HasRaiseDeadPenalty => raiseDeadPenalty > 0;
+
+
+
         void TakeLongRest()
         {
             var result = DnDTactics.Characters.RestService.LongRest(Slot);
@@ -194,6 +218,8 @@ namespace DnDTactics.UI
                 int cost = DnDTactics.Rules.Revival.TownHealerCost(m.character.level);
                 MakeRowButton(row.transform, $"Revive {cost}g", -250, new Color(0.3f, 0.5f, 0.45f),
                     () => ReviveMember(m));
+                MakeRowButton(row.transform, "Use Diamond", -380, new Color(0.4f, 0.35f, 0.55f),
+                    () => FieldReviveMember(m));
             }
             if (m.status == MemberStatus.Down)
             {
@@ -201,6 +227,9 @@ namespace DnDTactics.UI
                            (Slot.party.longRestsTaken - m.fellAtLongRest);
                 info += $"   ⚠ {Mathf.Max(0, left)} long rests to revive";
             }
+            if (m.character.HasRaiseDeadPenalty)
+                info += $"   [weakened: {m.character.raiseDeadPenalty} rests]";
+        
 
             // Dead: no deploy/recall/revive (revival window passed).
             MakeRowButton(row.transform, "Dismiss", -120, new Color(0.55f, 0.25f, 0.25f), () => Dismiss(m));

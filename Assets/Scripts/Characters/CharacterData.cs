@@ -17,5 +17,6 @@ namespace DnDTactics.Characters
         public bool isDown;
         public int[] baseScores;
         public int[] backgroundBonuses;
+        public int raiseDeadPenalty;
     }
 }

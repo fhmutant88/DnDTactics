@@ -412,6 +412,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 739c576805b016f4c9fd6fa20e32cfcd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.UI.RosterUI
+  raiseDeadPenalty: 0
 --- !u!4 &1367652892
 Transform:
   m_ObjectHideFlags: 0
