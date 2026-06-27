@@ -132,10 +132,39 @@ namespace DnDTactics.Procgen
         {
             inCombat = false;
             combat.ClearEncounter();
-            exploration.SetExploring(true);      // resume free movement
-            Debug.Log(victory ? "Encounter cleared — back to exploring."
-                              : "The party fell. (Exploration continues; revive at town.)");
-            // (Later: on defeat, route to a game-over/return-to-town flow.)
+
+            if (victory)
+            {
+                exploration.SetExploring(true);   // resume the crawl
+                Debug.Log("Encounter cleared — back to exploring.");
+                return;
+            }
+
+            // Defeat. Check whether ANY deployed member is still alive.
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            int living = slot != null ? slot.party.LivingMembers(slot.barracks).Count() : 0;
+
+            if (living > 0)
+            {
+                // Partial loss — survivors remain, the crawl continues (they can revive fallen later).
+                exploration.SetExploring(true);
+                Debug.Log($"The party took losses but {living} survivor(s) press on.");
+            }
+            else
+            {
+                // TOTAL PARTY KILL — the run and everything carried is lost. Autosave already
+                // persisted the wipe. Recourse: Load Manual Save (if one exists) from the menu.
+                Debug.Log("=== YOUR PARTY HAS FALLEN. The run is lost. ===");
+                if (GameSession.Instance != null) GameSession.Instance.SaveActive(); // persist the wipe
+                StartCoroutine(ReturnToMenuAfterDelay());
+            }
+        }
+
+        System.Collections.IEnumerator ReturnToMenuAfterDelay()
+        {
+            // Brief pause so the player sees the defeat before routing out.
+            yield return new WaitForSeconds(2.5f);
+            DnDTactics.Core.SceneFlow.Go(DnDTactics.Core.SceneFlow.MainMenu);
         }
 
         // Find up to `count` walkable cells near a center (BFS ring outward).
