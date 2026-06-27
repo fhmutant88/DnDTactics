@@ -39,6 +39,7 @@ namespace DnDTactics.UI
         void Update()
         {
             if (combat == null) return;
+            if (canvas != null && !canvas.gameObject.activeSelf) return; // hidden during exploration
             if (cam == null) cam = Camera.main;
             UpdateBanner();
             UpdateSelectedPanel();
@@ -56,6 +57,13 @@ namespace DnDTactics.UI
                 es.AddComponent<EventSystem>();
                 es.AddComponent<StandaloneInputModule>();
             }
+        }
+
+        // Show/hide the whole combat HUD (used by exploration: hidden while exploring,
+        // shown during an in-place encounter).
+        public void SetVisible(bool on)
+        {
+            if (canvas != null) canvas.gameObject.SetActive(on);
         }
 
         void BuildCanvas()

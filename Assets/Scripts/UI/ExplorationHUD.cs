@@ -22,6 +22,9 @@ namespace DnDTactics.UI
         Button portalButton;
         TMP_Text portalLabel, infoText;
 
+        Button modeButton;
+        TMP_Text modeLabel;
+
         SaveSlot Slot => GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
 
         void Start()
@@ -44,6 +47,8 @@ namespace DnDTactics.UI
 
             if (selectedText != null && exploration != null)
                 selectedText.text = $"Selected: {exploration.SelectedName}";
+            if (modeLabel != null && exploration != null)
+                modeLabel.text = $"Mode: {exploration.ModeName}";
         }
 
         int CountScrolls()
@@ -107,6 +112,18 @@ namespace DnDTactics.UI
 
             selectedText = MakeText("Selected", 24, TextAlignmentOptions.Left);
             Anchor(selectedText.rectTransform, new Vector2(0f, 1f), new Vector2(20, -20), new Vector2(500, 32));
+
+            var mgo = new GameObject("ModeButton", typeof(RectTransform));
+            mgo.transform.SetParent(canvas.transform, false);
+            mgo.AddComponent<Image>().color = new Color(0.3f, 0.45f, 0.4f, 0.95f);
+            modeButton = mgo.AddComponent<Button>();
+            Anchor(mgo.GetComponent<RectTransform>(), new Vector2(0f, 0f), new Vector2(20, 20), new Vector2(220, 54));
+            modeButton.onClick.AddListener(() => { if (exploration != null) exploration.ToggleMode(); });
+
+            modeLabel = MakeText("ModeLabel", 22, TextAlignmentOptions.Center);
+            modeLabel.transform.SetParent(mgo.transform, false);
+            var mrt = modeLabel.rectTransform;
+            mrt.anchorMin = Vector2.zero; mrt.anchorMax = Vector2.one; mrt.offsetMin = Vector2.zero; mrt.offsetMax = Vector2.zero;
         }
 
         TMP_Text MakeText(string name, float size, TextAlignmentOptions align)

@@ -23,6 +23,10 @@ namespace DnDTactics.Procgen
         public float moveSpeed = 6f;
 
         private CharToken selected;
+        private bool individualMode = false;
+        public bool IndividualMode => individualMode;
+        public void ToggleMode() => individualMode = !individualMode;
+        public string ModeName => individualMode ? "Individual" : "Group";
 
         // The selected character's display name (for the HUD label). Empty if none/placeholder.
         public string SelectedName
@@ -173,10 +177,14 @@ namespace DnDTactics.Procgen
             var clickedToken = TokenFromGameObject(hit.collider.gameObject);
             if (clickedToken != null) { SelectToken(clickedToken); return; }
 
-            // Otherwise it's a ground click → group move (unchanged for now).
+            // Otherwise it's a ground click → move, per the current mode.
             GridCoord target = grid.WorldToCoord(hit.point);
             if (!grid.InBounds(target) || !grid.IsWalkable(target)) return;
-            MoveGroupTo(target);
+
+            if (individualMode)
+                MoveSelectedTo(target);
+            else
+                MoveGroupTo(target);
         }
 
         // Group move: leader (token[0]) goes to target; followers cluster around it.
@@ -203,6 +211,16 @@ namespace DnDTactics.Procgen
                         tokens[i].moving = StartCoroutine(WalkToken(tokens[i], path));
                 }
             }
+        }
+
+        // Individual move: only the selected token walks to the target; others hold position.
+        void MoveSelectedTo(GridCoord target)
+        {
+            if (selected == null) return;
+            if (selected.moving != null) { StopCoroutine(selected.moving); selected.moving = null; }
+            var path = FindPath(selected.coord, target);
+            if (path == null) return;
+            selected.moving = StartCoroutine(WalkToken(selected, path));
         }
 
         void StopAllTokenMovement()

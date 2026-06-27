@@ -150,6 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Procgen.ExplorationManager
   dungeon: {fileID: 1004758472}
   partyColor: {r: 0.3, g: 0.6, b: 0.95, a: 1}
+  leaderColor: {r: 0.95, g: 0.8, b: 0.3, a: 1}
   tokenYOffset: 0.6
   moveSpeed: 6
 --- !u!4 &116874430
@@ -326,6 +327,7 @@ MonoBehaviour:
   exploration: {fileID: 116874429}
   dungeon: {fileID: 1004758472}
   combat: {fileID: 2014721752}
+  combatHUD: {fileID: 0}
   monsterPool:
   - {fileID: 11400000, guid: d07f75629a0d0644ab877f5c43337aa8, type: 2}
   - {fileID: 11400000, guid: cf69218554d2a594baebbcb8bde7984e, type: 2}
@@ -333,6 +335,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 366a235a7868a3249b84168ca1444705, type: 2}
   encounterCount: 3
   triggerRadius: 2
+  minChests: 1
+  roomsPerChest: 3
 --- !u!4 &864831380
 Transform:
   m_ObjectHideFlags: 0
@@ -570,6 +574,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.UI.ExplorationHUD
   encounters: {fileID: 864831379}
+  exploration: {fileID: 0}
 --- !u!4 &1929960677
 Transform:
   m_ObjectHideFlags: 0

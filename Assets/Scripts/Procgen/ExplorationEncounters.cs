@@ -18,6 +18,7 @@ namespace DnDTactics.Procgen
         public ExplorationManager exploration;
         public DungeonVisualizer dungeon;
         public CombatManager combat;
+        public DnDTactics.UI.CombatHUD combatHUD;
 
         [Header("Encounter content")]
         public List<MonsterStats> monsterPool = new();
@@ -48,7 +49,7 @@ namespace DnDTactics.Procgen
         {
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
             if (combat != null) combat.startDormant = true;
-        }
+            }
 
         void Start()
         {
@@ -62,6 +63,17 @@ namespace DnDTactics.Procgen
                 combat.OnEncounterEnded += OnCombatEnded;
             }
             if (dungeon != null) dungeon.OnGenerated += PlaceMarkers;
+            
+            // ... existing Start code ...
+            StartCoroutine(HideCombatHudNextFrame());
+        }
+
+        System.Collections.IEnumerator HideCombatHudNextFrame()
+        {
+            yield return null; // let CombatHUD.Start build its canvas first
+            if (combatHUD == null) combatHUD = FindFirstObjectByType<DnDTactics.UI.CombatHUD>();
+            if (combatHUD != null) combatHUD.SetVisible(false);
+
         }
 
         void OnDestroy()
@@ -140,6 +152,7 @@ namespace DnDTactics.Procgen
             inCombat = true;
             exploration.SetExploring(false);     // stop free movement
             combat.ClearEncounter();             // fresh slate on the shared grid
+            if (combatHUD != null) combatHUD.SetVisible(false);
             combat.SetGrid(grid);
 
             // Spawn the deployed party at/near their current position.
@@ -164,6 +177,7 @@ namespace DnDTactics.Procgen
             combat.encounterGoldBase = 100; // simple flat base for now; can budget later
             combat.StartExternalEncounter();
             Debug.Log("Encounter triggered — combat begins on the dungeon grid.");
+            if (combatHUD != null) combatHUD.SetVisible(true);
         }
 
         void OnCombatEnded(bool victory)
