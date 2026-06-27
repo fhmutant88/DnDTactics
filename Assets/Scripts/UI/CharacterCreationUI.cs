@@ -52,6 +52,7 @@ namespace DnDTactics.UI
 
         List<Species> speciesList; List<CharacterClass> classList; List<Background> bgList;
         int[] rollPool;
+        int[] scorePool;   // the six values to assign (rolls, or the fixed array)
 
         void Start()
         {
@@ -146,7 +147,7 @@ namespace DnDTactics.UI
             for (int i = 0; i < 6; i++)
             {
                 scoreCyc[i] = MakeCycler(new Vector2(x - 30, y), 240, abbr[i],
-                    new List<string> { "10" }, Refresh);
+                    new List<string> { "—" }, OnScoreCyclerChanged);
                 scoreResult[i] = MakeText("Res" + i, 20, TextAlignmentOptions.Left);
                 Anchor(scoreResult[i].rectTransform, new Vector2(0.5f, 1f),
                     new Vector2(x + 150, y), new Vector2(120, 32));
@@ -165,6 +166,13 @@ namespace DnDTactics.UI
                 bonusLabel[i] = bonusCyc[i].valueText; // not used; label handled below
                 y += step;
             }
+        }
+
+        void OnScoreCyclerChanged()
+        {
+            // Only the pool-based modes need cross-cycler rebuilding.
+            if (scorePool != null) RebuildPoolOptions();
+            Refresh();
         }
 
         void BuildBottom()
@@ -191,21 +199,68 @@ namespace DnDTactics.UI
             int m = methodCyc.index; // 0=array 1=pointbuy 2=roll
             rollButton.gameObject.SetActive(m == 2);
 
-            List<string> opts;
-            if (m == 0) opts = AbilityScoreGeneration.StandardArray().Select(v => v.ToString()).ToList();
-            else if (m == 1) opts = Enumerable.Range(8, 8).Select(v => v.ToString()).ToList(); // 8..15
-            else
+            if (m == 1) // Point Buy: independent 8..15 per ability, no shared pool
             {
-                if (rollPool == null) rollPool = AbilityScoreGeneration.RollSet();
-                opts = rollPool.Select(v => v.ToString()).ToList();
+                scorePool = null;
+                var opts = Enumerable.Range(8, 8).Select(v => v.ToString()).ToList(); // 8..15
+                for (int i = 0; i < 6; i++) scoreCyc[i].SetOptions(new List<string>(opts), 0);
+                Refresh();
+                return;
             }
-            for (int i = 0; i < 6; i++) scoreCyc[i].SetOptions(new List<string>(opts), scoreCyc[i].index);
+
+            // Array or Roll: build the six-value pool once.
+            if (m == 0)
+                scorePool = AbilityScoreGeneration.StandardArray();
+            else // roll
+            {
+                if (scorePool == null) scorePool = AbilityScoreGeneration.RollSet();
+            }
+
+            // Clear all assignments and rebuild each cycler's available options.
+            for (int i = 0; i < 6; i++) scoreCyc[i].SetOptions(new List<string> { "—" }, 0);
+            RebuildPoolOptions();
+            Refresh();
+        }
+
+        // Rebuilds every ability cycler to offer "—" plus the pool values not used elsewhere.
+        void RebuildPoolOptions()
+        {
+            if (scorePool == null) return; // point buy doesn't use the pool
+
+            // What each ability currently holds (its selected value, or null for "—").
+            var assigned = new string[6];
+            for (int i = 0; i < 6; i++)
+                assigned[i] = scoreCyc[i].Value == "—" ? null : scoreCyc[i].Value;
+
+            // Count how many of each pool value are "taken" by assignments.
+            for (int i = 0; i < 6; i++)
+            {
+                // Build this ability's option list: "—", its own current value, plus any
+                // pool value still available (accounting for duplicates in the pool).
+                var poolList = scorePool.Select(v => v.ToString()).ToList();
+
+                // Remove values used by OTHER abilities (one instance each).
+                for (int j = 0; j < 6; j++)
+                {
+                    if (j == i) continue;
+                    if (assigned[j] != null) poolList.Remove(assigned[j]);
+                }
+
+                var opts = new List<string> { "—" };
+                opts.AddRange(poolList);
+
+                // Keep this cycler on its current value if still valid.
+                string keep = assigned[i] ?? "—";
+                int keepIdx = opts.IndexOf(keep);
+                scoreCyc[i].SetOptions(opts, keepIdx < 0 ? 0 : keepIdx);
+            }
         }
 
         void RollScores()
         {
-            rollPool = AbilityScoreGeneration.RollSet();
-            ReconfigureScorePool();
+            scorePool = AbilityScoreGeneration.RollSet(); // fresh six values
+            for (int i = 0; i < 6; i++) scoreCyc[i].SetOptions(new List<string> { "—" }, 0);
+            RebuildPoolOptions();
             Refresh();
         }
 
@@ -237,7 +292,7 @@ namespace DnDTactics.UI
 
             b.method = (ScoreMethod)methodCyc.index;
             for (int i = 0; i < 6; i++)
-                b.baseScores[i] = int.TryParse(scoreCyc[i].Value, out int v) ? v : 10;
+                b.baseScores[i] = int.TryParse(scoreCyc[i].Value, out int v) ? v : 0; // "—" → 0 (invalid)
 
             if (bg != null)
                 for (int i = 0; i < 3 && i < bg.abilityOptions.Count; i++)
@@ -251,11 +306,26 @@ namespace DnDTactics.UI
             Ability[] all = (Ability[])System.Enum.GetValues(typeof(Ability));
             for (int i = 0; i < 6; i++)
             {
-                int baseV = int.TryParse(scoreCyc[i].Value, out int v) ? v : 10;
+                bool assigned = int.TryParse(scoreCyc[i].Value, out int v);
+                int baseV = assigned ? v : 0;
                 int bonus = BonusFor(all[i], bg);
                 int final = baseV + bonus;
                 int mod = AbilityScores.Modifier(final);
-                scoreResult[i].text = $"= {final} ({(mod >= 0 ? "+" : "")}{mod})";
+                scoreResult[i].text = assigned ? $"= {final} ({(mod >= 0 ? "+" : "")}{mod})" : "—";
+            }
+
+            if (scorePool != null)
+            {
+                var assignedVals = new List<string>();
+                for (int i = 0; i < 6; i++) if (scoreCyc[i].Value != "—") assignedVals.Add(scoreCyc[i].Value);
+                var remaining = scorePool.Select(v => v.ToString()).ToList();
+                foreach (var a in assignedVals) remaining.Remove(a);
+                string poolMsg = remaining.Count > 0
+                    ? "Unassigned values: " + string.Join(", ", remaining)
+                    : "All values assigned.";
+                // Append to whatever status/output line you use:
+                outputText.text = (createButton.interactable ? "Ready to create." : outputText.text)
+                                  + "\n" + poolMsg;
             }
 
             var problems = ReadBuilder().Validate();
