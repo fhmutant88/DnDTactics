@@ -15,6 +15,8 @@ namespace DnDTactics.UI
     public class ExplorationHUD : MonoBehaviour
     {
         public ExplorationEncounters encounters; // to check if we're mid-combat
+        public DnDTactics.Procgen.ExplorationManager exploration;
+        TMP_Text selectedText;
 
         Canvas canvas;
         Button portalButton;
@@ -25,6 +27,7 @@ namespace DnDTactics.UI
         void Start()
         {
             if (encounters == null) encounters = FindFirstObjectByType<ExplorationEncounters>();
+            if (exploration == null) exploration = FindFirstObjectByType<ExplorationManager>();
             EnsureEventSystem();
             BuildCanvas();
             BuildUI();
@@ -38,6 +41,9 @@ namespace DnDTactics.UI
             portalButton.interactable = scrolls > 0 && !inCombat;
             infoText.text = inCombat ? "In combat — can't portal."
                           : "Exploring. Portal to bank this run and return to town.";
+
+            if (selectedText != null && exploration != null)
+                selectedText.text = $"Selected: {exploration.SelectedName}";
         }
 
         int CountScrolls()
@@ -98,6 +104,9 @@ namespace DnDTactics.UI
             portalLabel.transform.SetParent(go.transform, false);
             var rt = portalLabel.rectTransform;
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+
+            selectedText = MakeText("Selected", 24, TextAlignmentOptions.Left);
+            Anchor(selectedText.rectTransform, new Vector2(0f, 1f), new Vector2(20, -20), new Vector2(500, 32));
         }
 
         TMP_Text MakeText(string name, float size, TextAlignmentOptions align)

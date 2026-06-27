@@ -207,3 +207,11 @@ Highest-leverage systems, build these first; the rich features above depend on t
   initiative order on arrival. Current combat rolls initiative once for a fixed roster.
 - INTERIM (now): when an encounter triggers, bring the whole living party into the fight at once
   (spawned near their exploration positions), as the current bridge does.
+
+## Movement foundation — piece 1 DONE
+- Exploration now spawns one token per deployed living member (leader = gold token[0], others blue),
+  on adjacent cells in the first room. Group click-to-move: leader to target, followers cluster.
+- Encounters/chests trigger when ANY character nears the marker (exploration.CharacterCoords).
+- Chest loot confirmed working (gold/item to leader on proximity).
+- NEXT: piece 2 selection (click a token to select), then Group/Individual toggle + true individual
+  movement, then the group/ungroup control. Then vision/LOS/fog + traps build on individual positions.

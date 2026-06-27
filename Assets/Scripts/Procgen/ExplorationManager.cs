@@ -22,6 +22,20 @@ namespace DnDTactics.Procgen
         public float tokenYOffset = 0.6f;
         public float moveSpeed = 6f;
 
+        private CharToken selected;
+
+        // The selected character's display name (for the HUD label). Empty if none/placeholder.
+        public string SelectedName
+        {
+            get
+            {
+                if (selected == null || string.IsNullOrEmpty(selected.memberId)) return "—";
+                var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+                var m = slot != null ? slot.barracks.GetById(selected.memberId) : null;
+                return m != null ? m.character.characterName : "—";
+            }
+        }
+
         // One token per deployed member.
         class CharToken
         {
@@ -29,7 +43,9 @@ namespace DnDTactics.Procgen
             public GameObject go;
             public GridCoord coord;
             public Coroutine moving;
+            public Vector3 baseScale;   // remember normal size for selection scaling
         }
+
         private readonly List<CharToken> tokens = new();
 
         private TacticalGrid grid;
@@ -73,6 +89,7 @@ namespace DnDTactics.Procgen
                 // Fallback (e.g. scene run directly): one generic token so exploration still works.
                 var spot = start;
                 tokens.Add(MakeToken(null, spot, true));
+                if (tokens.Count > 0) SelectToken(tokens[0]); // leader pre-selected
                 Debug.Log("Exploration: no deployed party — spawned a single placeholder token.");
                 return;
             }
@@ -98,11 +115,13 @@ namespace DnDTactics.Procgen
             go.name = isLeader ? "Token_Leader" : "Token_Member";
             go.transform.SetParent(transform);
             go.transform.localScale = new Vector3(0.7f, 0.8f, 0.7f);
+
             var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
             mat.SetColor("_BaseColor", isLeader ? leaderColor : partyColor);
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
 
             var t = new CharToken { memberId = memberId, go = go, coord = cell };
+            t.baseScale = go.transform.localScale;
             go.transform.position = TokenWorld(cell);
             return t;
         }
@@ -124,6 +143,21 @@ namespace DnDTactics.Procgen
             return new GridCoord(0, 0);
         }
 
+        void SelectToken(CharToken t)
+        {
+            if (selected == t) return;
+            if (selected != null && selected.go != null)
+                selected.go.transform.localScale = selected.baseScale;   // unhighlight old
+            selected = t;
+            if (selected != null && selected.go != null)
+                selected.go.transform.localScale = selected.baseScale * 1.15f; // highlight new
+            Debug.Log($"Selected: {SelectedName}");
+        }
+
+        // Find the token whose GameObject was clicked (via the hit collider).
+        CharToken TokenFromGameObject(GameObject go) =>
+            tokens.FirstOrDefault(t => t.go == go);
+
         void Update()
         {
             if (!exploring || grid == null || tokens.Count == 0) return;
@@ -135,9 +169,13 @@ namespace DnDTactics.Procgen
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hit, 500f)) return;
 
+            // Clicked a character token? Select it (don't move).
+            var clickedToken = TokenFromGameObject(hit.collider.gameObject);
+            if (clickedToken != null) { SelectToken(clickedToken); return; }
+
+            // Otherwise it's a ground click → group move (unchanged for now).
             GridCoord target = grid.WorldToCoord(hit.point);
             if (!grid.InBounds(target) || !grid.IsWalkable(target)) return;
-
             MoveGroupTo(target);
         }
 
