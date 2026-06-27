@@ -33,28 +33,34 @@ namespace DnDTactics.Procgen
             grid = dungeon.Grid;
             if (grid == null || exploration == null) return;
 
-            // Union of every living member's currently-visible tiles.
-            var newVisible = new HashSet<GridCoord>();
+            // 1) UNION of all living members' sight → defines what's MAPPED EVER (permanent).
+            var unionVisible = new HashSet<GridCoord>();
             foreach (var (coord, darkvisionFeet) in exploration.CharacterVisionData())
             {
                 int radius = Vision.SightRadiusTiles(darkvisionFeet);
                 foreach (var t in Vision.VisibleTiles(coord, radius, grid))
-                    newVisible.Add(t);
+                    unionVisible.Add(t);
             }
+            foreach (var c in unionVisible) everExplored.Add(c); // accumulate permanent knowledge
 
-            // Tiles that left view → drop to Explored (if ever explored).
-            foreach (var c in currentlyVisible)
-                if (!newVisible.Contains(c))
-                    dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Explored);
-
-            // Newly/continuing visible tiles → Visible, and record as explored.
-            foreach (var c in newVisible)
+            // 2) SELECTED character's sight → defines what's BRIGHT right now.
+            var selectedVisible = new HashSet<GridCoord>();
+            var sel = exploration.SelectedVisionData();
+            if (sel.HasValue)
             {
-                dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Visible);
-                everExplored.Add(c);
+                int radius = Vision.SightRadiusTiles(sel.Value.darkvisionFeet);
+                selectedVisible = Vision.VisibleTiles(sel.Value.coord, radius, grid);
             }
 
-            currentlyVisible = newVisible;
+            // 3) Paint every mapped tile: Visible if the SELECTED char sees it, else Explored (dimmed).
+            //    (Unseen tiles — never mapped — stay hidden, untouched.)
+            foreach (var c in everExplored)
+            {
+                if (selectedVisible.Contains(c))
+                    dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Visible);
+                else
+                    dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Explored);
+            }
         }
     }
 }

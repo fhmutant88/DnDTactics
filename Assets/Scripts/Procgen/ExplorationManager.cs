@@ -79,6 +79,21 @@ namespace DnDTactics.Procgen
             }
         }
 
+        // The selected character's vision data (coord + darkvision feet), or null if none.
+        public (GridCoord coord, int darkvisionFeet)? SelectedVisionData()
+        {
+            if (selected == null) return null;
+            int dv = 0;
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot != null && !string.IsNullOrEmpty(selected.memberId))
+            {
+                var m = slot.barracks.GetById(selected.memberId);
+                if (m != null && m.character != null && m.character.species != null)
+                    dv = m.character.species.darkvisionRange;
+            }
+            return (selected.coord, dv);
+        }
+
         public void SetExploring(bool on)
         {
             exploring = on;
@@ -176,6 +191,7 @@ namespace DnDTactics.Procgen
             if (selected != null && selected.go != null)
                 selected.go.transform.localScale = selected.baseScale * 1.15f; // highlight new
             Debug.Log($"Selected: {SelectedName}");
+            if (fog != null) fog.Recompute();
         }
 
         // Find the token whose GameObject was clicked (via the hit collider).

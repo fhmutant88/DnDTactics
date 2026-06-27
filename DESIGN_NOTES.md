@@ -335,3 +335,79 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   and/or player-rotatable camera to see around walls.
 - Not blocking vision work. Revisit during a navigation/camera polish pass (pairs naturally with the
   fog-of-war reveal, since both touch how the dungeon presents visually).
+
+## Resting in a dungeon + repopulation (DEFERRED — rich mechanic, document now)
+- Resting IN a dungeon (mid-run) is RISKY: the engine rolls to spawn new monsters during a rest,
+  placed ANYWHERE incl. already-cleared rooms (the dungeon repopulates behind you).
+- LONG rest = HIGHER spawn chance than SHORT rest (more time = more wandering monsters).
+- Consequence: a dungeon is only TRULY completable (all explored + all monsters dead + all loot)
+  on a no-rest run (or lucky rests that spawn nothing). Rest and the dungeon can refill.
+- BRILLIANT INFO-DESIGN: the "DUNGEON COMPLETE" prompt is itself the signal. Enter the last room:
+  - Prompt appears → nothing spawned during rest → dungeon genuinely clear → leave clean.
+  - NO prompt (room empty but no completion) → something spawned → monsters lurk in "cleared" rooms
+    → dungeon NOT done; go hunt them or flee. The ABSENCE of the prompt is the warning.
+- DEPENDS ON (all new):
+  - IN-DUNGEON resting action (currently RestService.LongRest is TOWN-only from Roster). Need a
+    "rest here" exploration action (short + long).
+  - A reason to rest mid-run: HP (and later spell-slot/ability) recovery — the risk/reward of
+    "heal but maybe repopulate." 
+  - DUNGEON-COMPLETION condition + tracking (all rooms entered + all monsters dead + all loot?),
+    so the engine knows whether to show "Dungeon Complete."
+  - Spawn-during-rest logic (chance by rest type; placement anywhere; respects monster budget/level).
+- Fits the all-or-nothing/risk-lever design: rest to heal vs. keep the dungeon static. Another gamble
+  alongside push-deeper / portal-out.
+- Q to resolve later: exact completion condition; short vs long rest spawn chances; do spawned
+  monsters scale to party level/depth; does the party get a vague "you hear skittering" hint on a
+  spawn, or only the missing-prompt signal.
+
+## Dungeon completion + resting — REFINEMENTS (decided)
+- COMPLETION = all monsters dead + all rooms explored. NOT all loot (a failed lockpick could make
+  a chest permanently inaccessible — loot is a bonus, not a completion gate).
+- FALLEN BODIES: dragged with the party (carried; tracked in party data / downed token). Revival can
+  happen anywhere (no corpse-retrieval logistics). Recovered to town at run end (portal or complete).
+  [Chosen over bodies-stay-where-they-fall for simplicity + "don't abandon your people" feel.]
+- IN-DUNGEON REST (new): short + long rest options during exploration (heal mid-run).
+  - SHORT rest: VERY LOW spawn chance; heals short-rest amount (5e: spend Hit Dice, partial).
+  - LONG rest: HIGHER spawn chance; FULL heal IF uninterrupted.
+    - INTERRUPTION: spawned monsters can appear in the REST ROOM mid-long-rest, before healing
+      completes → party gets only SHORT-rest healing (partial) AND must fight the spawn. Great
+      risk/reward: gambled on a long rest, got ambushed, come out partially healed + in a fight.
+  - Needs: a ShortRest (partial heal) distinct from existing RestService.LongRest (full); interruption
+    logic; spawn-during-rest placement.
+- Repopulation/"Dungeon Complete" prompt-as-signal: as documented above.
+
+## LEVELED DUNGEONS (unifying progression concept — confirmed)
+- Party LEVEL drives the random dungeon build: SIZE (bigger for higher level), monster budget/
+  difficulty, chest count/quality. Dungeons are effectively "leveled."
+- Current dungeons are smallish + use a FLAT encounter setup. TODO: feed party level into the
+  generator (size) AND into encounter/chest placement (budget/quality). Unifies several threads:
+  difficulty-scaled chests, level-scaled encounters, bigger high-level dungeons.
+- This is the backbone of a future RUN STRUCTURE / PROGRESSION milestone.
+
+## Fallen bodies — STAY WHERE THEY FALL (decided — reverses earlier "dragged" note)
+- Bodies STAY at the tile where the character fell (avoids carrying-capacity/weight problems).
+  A downed/dead token remains on that tile (you can see where they fell, walk back to it).
+- RECOVERY to town only via: PORTAL-OUT or DUNGEON-COMPLETE. Both recover ALL the party's fallen,
+  wherever in the dungeon they died (ending the run gathers everyone, living + dead; no scene needed,
+  no physical drag-to-exit). [Confirm: recover ALL fallen regardless of location — sane run-end rule.]
+- LOOTING THE FALLEN (new mechanic): a living character can loot a downed ally's inventory (potions,
+  diamonds, scrolls, strong items) for use during the rest of the crawl. Brutal, thematic resource
+  recovery — a death's gear isn't stranded; it redistributes to survivors.
+  - Requires reaching the body: move a living character to the fallen's tile → "loot downed ally" action.
+  - Looting is PERMANENT redistribution. If you later revive that character, they come back WITHOUT the
+    looted items (you took them) — revival does not restore looted gear.
+- Revival has a LOCATION too: revive at/near the body (in-dungeon diamond revival happens at the corpse).
+- Depends on: downed-token persistence at the fall tile; an "interact with downed ally" action
+  (loot / revive); run-end recovery sweeping all fallen.
+
+## Fallen recovery — FINAL rule (harsher; supersedes the "recover ALL" note above)
+- DUNGEON-COMPLETE: recovers ALL fallen (you cleared everything → sweep the whole dungeon leaving).
+- PORTAL-OUT: recovers ONLY fallen in the SAME ROOM as the portal when opened. Fallen left in OTHER
+  rooms are LOST PERMANENTLY (body + gear) unless looted first.
+- => Makes LOOTING THE FALLEN essential: when someone drops, loot their gear NOW (secure potions/
+  diamonds/scrolls) because you may never recover the body. Every death = "strip the corpse now or
+  gamble on recovering them later."
+- => To save a fallen ally's BODY (for town revival), either COMPLETE the dungeon or PORTAL FROM THEIR
+  ROOM. Otherwise looted gear is all you salvage; the character is lost.
+- Geography matters: a far fallen ally = go back + portal from their room (risky traverse through a
+  possibly-repopulated dungeon) vs. cut losses, loot what you can, portal from here (lose the body).
