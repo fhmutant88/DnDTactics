@@ -352,7 +352,8 @@ namespace DnDTactics.UI
             var session = GameSession.Instance;
             if (session != null && session.ActiveSlot != null)
             {
-                session.ActiveSlot.barracks.Add(c);
+                var member = session.ActiveSlot.barracks.Add(c);
+                member.inventory.Add("PortalScroll", 1);   // every new hero starts with one
                 session.SaveActive();
                 int n = session.ActiveSlot.barracks.members.Count;
                 statusText.text = $"Added {c.characterName}!  Barracks now holds {n}. " +

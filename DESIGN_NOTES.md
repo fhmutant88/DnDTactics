@@ -135,3 +135,32 @@ The full dungeon must NOT be visible on entry — core to the "what's around the
   (exploration → town) is what lets you then manual-save and lock in gains.
 - Risk/reward: push deeper (committed, no save) vs. portal out (bank progress, can save).
 - Each character starts with one Portal Scroll (consumable). Build with exploration/portal piece.
+
+## Death saving throws (5e fidelity — deferred)
+Currently a hero at 0 HP goes straight to Down (binary, out of the fight). Authentic 5e:
+- At 0 HP, roll a death save each turn: d20, 10+ = success, <10 = failure.
+- 3 successes = stabilized; 3 failures = dead. Nat 20 = revive at 1 HP. Nat 1 = 2 failures.
+- Taking damage while down = 1 failure (a crit = 2). Healing any amount = back up immediately.
+- Adds a mid-combat window to stabilize/heal a downed ally before they're lost — ties into
+  revival, the Down/Dead distinction, and in-combat healing (which itself is deferred).
+- Needs: per-combatant death-save tracking (success/fail counts), a check each turn while at 0 HP,
+  and combat to handle "down but not out" as a distinct state from the current "Down" (barracks).
+- Build when fleshing out combat depth (alongside spellcasting / in-combat healing).
+
+## Portal scroll — in-combat extraction, FULL design (build with combat-abilities system)
+The portal is a PERSISTENT, STATEFUL combat object (a real ability w/ a state machine):
+- CAST as an action (consumes caster's scroll); portal opens at caster's cell, stays open.
+- Each later turn, any PARTY member may ENTER as their action → extracted safe to town, removed
+  from initiative/field. Monsters cannot enter.
+- The portal CLOSES when: (a) the caster goes through (caster must be LAST — holds the door for
+  the party), OR (b) the caster deliberately closes it early as an action (to evacuate only 1-2
+  and keep fighting with the rest — tactical split), OR (c) it TIMES OUT (e.g. end of encounter;
+  if cast in exploration, persists until end of the NEXT encounter).
+- Drama/decisions: who escapes vs. stays, does the caster hold too long and get downed, split the
+  party (send the wounded home, press on). Heroes downed before entering follow revival rules.
+- Run resolves to "returned to town" once all leaving heroes are through (full or partial extraction).
+- This is a stateful combat ability — build alongside spellcasting/abilities action economy.
+
+## Portal scroll — EXPLORATION version (BUILD NOW, simple)
+- Between fights only (no action economy). Use scroll → consumed → party returns to town → run banked.
+- No open/close/timeout/selective-entry — those are inherently combat-only mechanics.

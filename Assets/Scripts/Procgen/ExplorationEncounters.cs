@@ -33,11 +33,10 @@ namespace DnDTactics.Procgen
         private readonly List<Marker> markers = new();
         private TacticalGrid grid;
         private bool inCombat = false;
+        public bool InCombat => inCombat;
 
         void Awake()
         {
-            Debug.Log($"Active scene: {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}, " +
-                      $"total loaded scenes: {UnityEngine.SceneManagement.SceneManager.sceneCount}");
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
             if (combat != null) combat.startDormant = true;
         }
