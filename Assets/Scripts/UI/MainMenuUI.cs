@@ -75,6 +75,15 @@ namespace DnDTactics.UI
             SceneFlow.Go(SceneFlow.Roster);
         }
 
+        void LoadManualSlot(string fileId)
+        {
+            var slot = SaveManager.LoadManual(fileId);
+            if (slot == null) { statusText.text = "No manual save to load."; return; }
+            GameSession.Instance.ActiveSlot = slot;
+            // The manual checkpoint is now the live state → go to the roster.
+            SceneFlow.Go(SceneFlow.Roster);
+        }
+
         void DeleteSlot(string fileId)
         {
             SaveManager.Delete(fileId);
@@ -155,17 +164,23 @@ namespace DnDTactics.UI
             row.transform.SetParent(canvas.transform, false);
             var img = row.AddComponent<Image>();
             img.color = new Color(1, 1, 1, 0.08f);
-            Anchor(row.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(820, 60));
+            Anchor(row.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(900, 60));
+
+            bool hasManual = SaveManager.HasManualSave(info.fileId);
 
             var label = MakeText("Label", row.transform, 24, TextAlignmentOptions.Left);
-            label.text = info.displayName;
+            label.text = info.displayName + (hasManual ? "   (checkpoint available)" : "");
             var lrt = label.rectTransform; lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 1);
-            lrt.offsetMin = new Vector2(20, 0); lrt.offsetMax = new Vector2(-260, 0);
+            lrt.offsetMin = new Vector2(20, 0); lrt.offsetMax = new Vector2(-400, 0);
 
-            MakeButton("Load", new Vector2(1f, 0.5f), new Vector2(-140, 0), new Vector2(110, 44),
-                       new Color(0.2f, 0.4f, 0.6f), () => LoadSlot(info.fileId), row.transform);
+            // Buttons right-to-left: Delete, Load, then Load Manual (if a checkpoint exists).
             MakeButton("Delete", new Vector2(1f, 0.5f), new Vector2(-20, 0), new Vector2(110, 44),
                        new Color(0.6f, 0.25f, 0.25f), () => DeleteSlot(info.fileId), row.transform);
+            MakeButton("Load", new Vector2(1f, 0.5f), new Vector2(-140, 0), new Vector2(110, 44),
+                       new Color(0.2f, 0.4f, 0.6f), () => LoadSlot(info.fileId), row.transform);
+            if (hasManual)
+                MakeButton("Load Manual", new Vector2(1f, 0.5f), new Vector2(-275, 0), new Vector2(140, 44),
+                           new Color(0.45f, 0.4f, 0.2f), () => LoadManualSlot(info.fileId), row.transform);
 
             rows.Add(row);
         }
