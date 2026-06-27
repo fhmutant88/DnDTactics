@@ -164,3 +164,34 @@ The portal is a PERSISTENT, STATEFUL combat object (a real ability w/ a state ma
 ## Portal scroll — EXPLORATION version (BUILD NOW, simple)
 - Between fights only (no action economy). Use scroll → consumed → party returns to town → run banked.
 - No open/close/timeout/selective-entry — those are inherently combat-only mechanics.
+
+## Portal scroll — EXPLORATION version: DONE
+- Each new character starts with one Portal Scroll (granted at creation).
+- "Use Portal (N)" button in exploration HUD; consumes one scroll, banks the run, returns to town.
+- Disabled during combat (exploration-only). Full in-combat extraction still deferred (see above).
+
+## Chests & traps — FULL design (most deferred; depends on foundational systems)
+CHESTS are containers of possibilities, not simple pickups:
+- May be: plainly lootable, TRAPPED (trap attached to container), a MIMIC (monster — combat handoff),
+  and/or LOCKED (needs a lockpick mechanic — a skill check, deferred).
+- Interaction flow: inspect → detect trap (vision/perception) → locked? → pick lock → loot OR fight.
+TRAPS are TYPED, data-driven, each with its own effect/save/area/footprint ("space quotient"):
+- e.g. fireball (AoE, Dex save), pit (fall, single tile), spikes, etc. Different ranges & areas.
+- Traps attach to many surfaces: FLOORS, WALLS, CEILINGS, and CHESTS — a cross-cutting concept.
+- Need a typed-effects system (areas + saves) — overlaps with the spellcasting/abilities effect system.
+LIGHTING is partly GAMEPLAY, not just art:
+- Light sources: torches, candles, magic items. Lighting may be randomized per dungeon build.
+- Feeds vision/darkvision → what you can see → trap detection + fog of war.
+
+## FOUNDATIONAL ORDER (keystones that unlock the above)
+Highest-leverage systems, build these first; the rich features above depend on them:
+1. VISION / DARKVISION / LIGHTING — unlocks trap detection, fog of war, chest-trap spotting,
+   line-of-sight, the "what's around the corner" tension. (Fog of war == this system.)
+2. INDIVIDUAL CHARACTER POSITIONS in exploration (group/individual movement, BG3-style) —
+   unlocks "who sees/who's nearest," tactical positioning; vision needs it.
+3. TYPED EFFECTS w/ areas + saves — unlocks traps' typed effects AND spellcasting; shared system.
+4. CONTAINER INTERACTIONS (lock/trap/mimic) + LOCKPICKING skill check — built on 1-3.
+=> Natural milestone: vision + individual movement + lighting + fog of war + traps, as ONE cluster.
+
+## Chests — TRIVIAL loot version (OK to build now, standalone, no throwaway)
+- Reach a chest → gold + maybe item to leader. No lock/trap/mimic yet (those need the foundation).

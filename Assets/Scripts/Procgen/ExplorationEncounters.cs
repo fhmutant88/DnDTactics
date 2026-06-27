@@ -28,6 +28,15 @@ namespace DnDTactics.Procgen
         [Tooltip("Trigger when the party gets this close (tiles) to an encounter's room center.")]
         public int triggerRadius = 2;
 
+        [Tooltip("Every dungeon has at least this many chests (guaranteed reward).")]
+        public int minChests = 1;
+        [Tooltip("Roughly one chest per this many rooms (placeholder scaling — refine by difficulty later).")]
+        public int roomsPerChest = 3;
+
+        // A chest waiting in a room.
+        class Chest { public GridCoord cell; public bool looted; }
+        private readonly List<Chest> chests = new();
+
         // An encounter waiting in a room.
         class Marker { public GridCoord cell; public bool triggered; }
         private readonly List<Marker> markers = new();
@@ -74,6 +83,27 @@ namespace DnDTactics.Procgen
                 if (grid.IsWalkable(c)) { markers.Add(new Marker { cell = c }); placed++; }
             }
             Debug.Log($"Placed {markers.Count} encounter(s) in the dungeon.");
+
+            // How many chests this dungeon gets. Guarantee a minimum (every dungeon has loot),
+            // then scale loosely by room count. (PLACEHOLDER scaling — refine by difficulty/level later.)
+            int desiredChests = Mathf.Max(minChests, rooms.Count / Mathf.Max(1, roomsPerChest));
+            // Don't ask for more chests than there are non-start rooms to hold them.
+            desiredChests = Mathf.Min(desiredChests, Mathf.Max(0, rooms.Count - 1));
+
+            int chestsPlaced = 0;
+            for (int i = rooms.Count - 1; i >= 1 && chestsPlaced < desiredChests; i--)
+            {
+                var cc = new GridCoord(rooms[i].CenterX, rooms[i].CenterY);
+                if (grid.IsWalkable(cc)) { chests.Add(new Chest { cell = cc }); chestsPlaced++; }
+            }
+
+            // Hard guarantee: if (somehow) nothing placed but rooms exist, force one chest.
+            if (chests.Count == 0 && rooms.Count > 1)
+            {
+                var cc = new GridCoord(rooms[1].CenterX, rooms[1].CenterY);
+                if (grid.IsWalkable(cc)) chests.Add(new Chest { cell = cc });
+            }
+            Debug.Log($"Placed {chests.Count} chest(s) in the dungeon (min {minChests}).");
         }
 
         void Update()
@@ -89,6 +119,16 @@ namespace DnDTactics.Procgen
                     m.triggered = true;
                     TriggerEncounter(m);
                     break;
+                }
+            }
+            // Chest proximity (looting, no combat).
+            foreach (var ch in chests)
+            {
+                if (ch.looted) continue;
+                if (Distance(party, ch.cell) <= triggerRadius)
+                {
+                    ch.looted = true;
+                    LootChest(ch);
                 }
             }
         }
@@ -157,6 +197,32 @@ namespace DnDTactics.Procgen
                 if (GameSession.Instance != null) GameSession.Instance.SaveActive(); // persist the wipe
                 StartCoroutine(ReturnToMenuAfterDelay());
             }
+        }
+
+        void LootChest(Chest ch)
+        {
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null) { Debug.Log("Found a chest, but no active slot to receive loot."); return; }
+
+            string leaderId = slot.party.EnsureLeader(slot.barracks);
+            var leader = leaderId != null ? slot.barracks.GetById(leaderId) : null;
+            if (leader == null) { Debug.Log("Found a chest, but no leader to receive loot."); return; }
+
+            // Gold: a modest random haul.
+            int gold = Random.Range(40, 121); // 40–120
+            leader.gold += gold;
+
+            // Item chance: ~40% something, weighted toward potions.
+            string drop = null;
+            float roll = Random.value;
+            if (roll < 0.10f) drop = "RevivifyDiamond";
+            else if (roll < 0.18f) drop = "PortalScroll";
+            else if (roll < 0.40f) drop = "HealingPotion";
+            if (drop != null) leader.inventory.Add(drop, 1);
+
+            GameSession.Instance.SaveActive();
+            Debug.Log($"Opened a chest! {leader.character.characterName} found {gold} gold" +
+                      (drop != null ? $" and 1x {drop}." : "."));
         }
 
         System.Collections.IEnumerator ReturnToMenuAfterDelay()
