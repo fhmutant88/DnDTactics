@@ -92,5 +92,12 @@ namespace DnDTactics.Procgen
                                        : DungeonVisualizer.TileVisibility.Explored);
             }
         }
+
+        public void ResetForNewDungeon()
+        {
+            everExplored.Clear();
+            grid = dungeon.Grid;
+            Recompute();
+        }
     }
 }

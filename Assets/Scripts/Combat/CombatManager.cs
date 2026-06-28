@@ -362,6 +362,12 @@ namespace DnDTactics.Combat
 
         void TryAttack(Combatant attacker, Combatant target)
         {
+            if (target == null || target.Team == attacker.Team)
+            {
+                Debug.Log("You can only attack enemies.");
+                return;
+            }
+
             if (!resources.ActionAvailable)
             {
                 Debug.Log("No action left this turn.");

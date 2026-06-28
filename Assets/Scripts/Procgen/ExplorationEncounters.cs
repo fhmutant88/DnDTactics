@@ -19,7 +19,9 @@ namespace DnDTactics.Procgen
         public DungeonVisualizer dungeon;
         public CombatManager combat;
         public DnDTactics.UI.CombatHUD combatHUD;
+        public FogOfWar fog;
         public bool DungeonComplete => dungeonComplete;
+
 
         [Header("Encounter content")]
         public List<MonsterStats> monsterPool = new();
@@ -73,6 +75,7 @@ namespace DnDTactics.Procgen
             if (exploration == null) exploration = FindFirstObjectByType<ExplorationManager>();
             if (dungeon == null) dungeon = FindFirstObjectByType<DungeonVisualizer>();
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
+            if (fog == null) fog = FindFirstObjectByType<FogOfWar>();
 
             if (combat != null)
             {
@@ -307,12 +310,11 @@ namespace DnDTactics.Procgen
         void CompleteDungeon()
         {
             dungeonComplete = true;
-            Debug.Log("=== DUNGEON COMPLETE! All rooms explored and all enemies defeated. ===");
+            Debug.Log("=== DUNGEON COMPLETE! ===");
 
             var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
             if (slot != null)
             {
-                // Simple completion reward to the leader (XP/gold expand later).
                 string leaderId = slot.party.EnsureLeader(slot.barracks);
                 var leader = leaderId != null ? slot.barracks.GetById(leaderId) : null;
                 if (leader != null)
@@ -321,13 +323,52 @@ namespace DnDTactics.Procgen
                     leader.gold += bonus;
                     Debug.Log($"Completion reward: {leader.character.characterName} gains {bonus} gold.");
                 }
-                // (Later: recover fallen here per the recovery rules; grant XP; mark progress.)
                 GameSession.Instance.SaveActive();
             }
 
-            // Stop exploration and return to town after a brief beat.
-            exploration.SetExploring(false);
-            StartCoroutine(ReturnToTownAfterDelay());
+            exploration.SetExploring(false); // freeze; the HUD offers Town / Descend / Save
+        }
+
+        public void ChooseReturnToTown()
+        {
+            GameSession.Instance.SaveActive();
+            DnDTactics.Core.SceneFlow.Go(DnDTactics.Core.SceneFlow.Roster);
+        }
+
+        public void ChooseSaveGame()
+        {
+            GameSession.Instance.SaveActive();
+            DnDTactics.Persistence.SaveManager.SaveManual(GameSession.Instance.ActiveSlot);
+            Debug.Log("Game saved (manual checkpoint after dungeon completion).");
+        }
+
+        public void ChooseDescend() => Descend();
+
+        void Descend()
+        {
+            if (!dungeonComplete) return;
+
+            GameSession.Instance.RunDepth++;
+            Debug.Log($"Descending to dungeon depth {GameSession.Instance.RunDepth}…");
+
+            // Reset per-dungeon state.
+            dungeonComplete = false;
+            visitedRooms.Clear();
+            markers.Clear();
+            foreach (var ch in chests) if (ch.token != null) Destroy(ch.token);
+            chests.Clear();
+            foreach (var b in braziers) if (b.token != null) Destroy(b.token);
+            braziers.Clear();
+
+            // New dungeon. Generate() rebuilds tiles+grid and fires OnGenerated → PlaceMarkers re-runs.
+            dungeon.Generate();
+            grid = dungeon.Grid;
+
+            // Re-place the party (carrying state) + reset fog.
+            exploration.RespawnForNewDungeon();
+            if (fog != null) fog.ResetForNewDungeon();
+
+            exploration.SetExploring(true);
         }
 
         System.Collections.IEnumerator ReturnToTownAfterDelay()

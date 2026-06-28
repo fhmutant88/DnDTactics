@@ -499,3 +499,50 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   LOS to their tile (UpdateBrazierVisibility / UpdateChestVisibility).
 - Confirmed: undiscovered/walled-off lit rooms, their braziers, and chests all stay hidden until a
   character has LOS into the room; then tiles + tokens reveal together. No leaking through walls.
+
+## Progression — dungeon completion DONE (keystone)
+- Completion = all rooms VISITED (any character inside a room's bounds) + all encounters CLEARED
+  (markers triggered = won, since surviving to explore means victory). Checked each frame, not in combat.
+- On completion: "DUNGEON COMPLETE!" (HUD + log), simple reward (150 gold to leader), SaveActive,
+  stop exploring, return to town (Roster) after ~2.5s.
+- ExplorationEncounters tracks visitedRooms + dungeonComplete; exposes DungeonComplete for the HUD.
+- NEXT progression pieces build on this completion event: descending deeper, leveled dungeons,
+  completion rewards (XP), in-dungeon resting + repopulation (+ the prompt-as-signal nuance).
+
+## Run structure — boss + rewards REFINEMENTS (decided)
+- A: Non-boss dungeons = normal random layout (as now). BOSS dungeon = ONE largish arena room.
+- B: Boss = a hard ENCOUNTER by CR (one big monster OR several tough ones — CR budget decides).
+  High-level play / leveling to 20 is a future nuance (may CAP levels — TBD; adds a lot to consider).
+- C: Boss reward = gold ~ partyLevel * 500 (big). PLUS after level 5: a low-% roll for a WONDROUS item
+  (rare item table is deferred content; the roll mechanic is simple — stub now, real items later).
+- D: Boss/run reward also grants enough XP to LEVEL UP any character who hasn't leveled during the run.
+
+## XP & LEVELING — must be ACTIVATED (foundational dependency, surfaced by D)
+- The data model EXISTS (Character XP/level, Progression, level-up HP logic from early milestones) but
+  in PRACTICE characters don't gain XP or level up during play (encounters grant gold to leader, not XP).
+- The ENTIRE progression vision hinges on leveling working: run depth = party level + 2, leveled
+  dungeons, boss rewards-as-levels. Party level must actually CHANGE.
+- Needs: (1) award XP from encounters + boss to party characters; (2) level-up flow when XP thresholds
+  hit (HP increase, etc. — model supports it, needs triggering); (3) surface level/XP in UI.
+- => "XP & leveling" is its own foundational piece, and it's a PREREQUISITE for the depth=level+2
+  run structure to mean anything. Likely build BEFORE or ALONGSIDE leveled dungeons/boss.
+
+## Encounter difficulty + XP = 2024 XP-BUDGET model (verified, aligns with existing systems)
+- 2024 replaced CR-threshold encounter building with an XP BUDGET: difficulty tier (LOW/MODERATE/HIGH,
+  replacing easy/medium/hard/deadly) → per-character XP budget by party level × party size → spend on
+  monsters by summing their XP values. NO multipliers for group size (removed in 2024). Just sum XP.
+- We ALREADY have the pieces (Milestone 5): MonsterStats has XP values; EncounterBudget/EncounterBuilder
+  do budget-based building; Difficulty enum exists. The exploration bridge currently BYPASSES this with
+  a flat "2-4 random monsters" — we should route exploration encounters through the real budget system.
+- XP-AS-REWARD: a defeated monster's XP value (already on MonsterStats) = the XP the party earns.
+  Award XP = sum defeated monsters' XP, distribute to party characters. Same numbers used for budgeting.
+- DIFFICULTY RAMP (run structure): early dungeons LOW/MODERATE, boss = HIGH (or deliberate over-budget
+  spike). Matches 2024 guidance (low/moderate ramping to a climactic high-difficulty boss).
+- Leveled dungeons: target a difficulty tier per depth; budget = per-char-by-level × party size; spend
+  on monsters. This IS the 2024 model + our existing EncounterBudget.
+
+## No friendly fire on direct attacks (FIXED)
+- TryAttack now rejects targets on the attacker's own team (can't sword/bow your own party).
+- NUANCE for later: area-of-effect spells (fireball etc.) MAY legitimately catch allies in their
+  radius (5e AoE doesn't discriminate). So "no friendly fire" applies to DIRECT/targeted attacks;
+  AoE friendly-fire is a separate (intended) consideration when spellcasting is built.

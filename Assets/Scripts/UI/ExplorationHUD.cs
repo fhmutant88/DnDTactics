@@ -10,13 +10,14 @@ using DnDTactics.Procgen;
 
 namespace DnDTactics.UI
 {
-    // Minimal exploration HUD: shows the party's Portal Scroll count and a Use Portal button.
-    // Using it banks the run and returns to town. Exploration-only (between fights).
+    // Exploration HUD: portal, mode toggle, torch, and the completion choice panel.
     public class ExplorationHUD : MonoBehaviour
     {
-        public ExplorationEncounters encounters; // to check if we're mid-combat
+        public ExplorationEncounters encounters;
         public DnDTactics.Procgen.ExplorationManager exploration;
         TMP_Text selectedText;
+
+        GameObject completionPanel;
 
         Canvas canvas;
         Button portalButton;
@@ -48,7 +49,7 @@ namespace DnDTactics.UI
             infoText.text = inCombat ? "In combat — can't portal."
                           : "Exploring. Portal to bank this run and return to town.";
             if (encounters != null && encounters.DungeonComplete && infoText != null)
-                infoText.text = "DUNGEON COMPLETE! Returning to town…";
+                infoText.text = "DUNGEON COMPLETE!";
 
             if (selectedText != null && exploration != null)
                 selectedText.text = $"Selected: {exploration.SelectedName}";
@@ -63,8 +64,12 @@ namespace DnDTactics.UI
                     torchLabel.text = $"Torch: light ({exploration.SelectedTorchLights()})";
                 else
                     torchLabel.text = "No Torch";
-                if (torchButton != null) torchButton.interactable = exploration.SelectedTorchLit() || exploration.SelectedHasTorchAvailable();
+                if (torchButton != null)
+                    torchButton.interactable = exploration.SelectedTorchLit() || exploration.SelectedHasTorchAvailable();
             }
+
+            if (completionPanel != null && encounters != null)
+                completionPanel.SetActive(encounters.DungeonComplete);
         }
 
         int CountScrolls()
@@ -76,13 +81,12 @@ namespace DnDTactics.UI
         void UsePortal()
         {
             if (Slot == null) return;
-            // Consume one scroll from the first holder.
             var holder = Slot.party.Members(Slot.barracks)
                              .FirstOrDefault(m => m.inventory.Has("PortalScroll"));
             if (holder == null) return;
             holder.inventory.Remove("PortalScroll", 1);
 
-            GameSession.Instance.SaveActive(); // bank the run state (gold/items/scroll spent)
+            GameSession.Instance.SaveActive();
             Debug.Log($"Portal used by {holder.character.characterName} — run banked, returning to town.");
             SceneFlow.Go(SceneFlow.Roster);
         }
@@ -152,6 +156,34 @@ namespace DnDTactics.UI
             torchLabel.transform.SetParent(tgo.transform, false);
             var trt = torchLabel.rectTransform;
             trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+
+            completionPanel = new GameObject("CompletionPanel", typeof(RectTransform));
+            completionPanel.transform.SetParent(canvas.transform, false);
+            Anchor(completionPanel.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(540, 80));
+
+            MakeChoiceButton("Go Deeper", new Vector2(-175, 0), new Color(0.5f, 0.3f, 0.3f),
+                () => { if (encounters != null) encounters.ChooseDescend(); });
+            MakeChoiceButton("Save Game", new Vector2(0, 0), new Color(0.45f, 0.4f, 0.2f),
+                () => { if (encounters != null) encounters.ChooseSaveGame(); });
+            MakeChoiceButton("Return to Town", new Vector2(175, 0), new Color(0.3f, 0.45f, 0.4f),
+                () => { if (encounters != null) encounters.ChooseReturnToTown(); });
+
+            completionPanel.SetActive(false);
+        }
+
+        void MakeChoiceButton(string text, Vector2 pos, Color color, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(text + "Btn", typeof(RectTransform));
+            go.transform.SetParent(completionPanel.transform, false);
+            go.AddComponent<Image>().color = color;
+            var btn = go.AddComponent<Button>();
+            Anchor(go.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), pos, new Vector2(165, 54));
+            btn.onClick.AddListener(onClick);
+            var label = MakeText("L", 20, TextAlignmentOptions.Center);
+            label.text = text;                              // ← set the button's label text
+            label.transform.SetParent(go.transform, false);
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
         }
 
         TMP_Text MakeText(string name, float size, TextAlignmentOptions align)

@@ -8,6 +8,7 @@ namespace DnDTactics.Core
     public class GameSession : MonoBehaviour
     {
         public static GameSession Instance { get; private set; }
+        public int RunDepth { get; set; } = 1; // which dungeon of the current run (1-based)
 
         // The save slot currently being played. Null at the main menu before one is chosen.
         public SaveSlot ActiveSlot { get; set; }

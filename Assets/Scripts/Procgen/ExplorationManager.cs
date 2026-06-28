@@ -102,6 +102,20 @@ namespace DnDTactics.Procgen
             if (!on) StopAllTokenMovement();
         }
 
+        public void RespawnForNewDungeon()
+        {
+            grid = dungeon.Grid;
+            GridCoord start = FindStartCell();
+            var cells = NearbyWalkable(start, tokens.Count);
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                GridCoord cell = i < cells.Count ? cells[i] : start;
+                tokens[i].coord = cell;
+                tokens[i].go.transform.position = TokenWorld(cell);
+            }
+            if (tokens.Count > 0) SelectToken(tokens[0]);
+        }
+
         IEnumerator Start()
         {
             if (dungeon == null) dungeon = FindFirstObjectByType<DungeonVisualizer>();

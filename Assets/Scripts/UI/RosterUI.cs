@@ -137,6 +137,7 @@ namespace DnDTactics.UI
         void Launch()
         {
             GameSession.Instance.SaveActive();
+            GameSession.Instance.RunDepth = 1;
             SceneFlow.Go(SceneFlow.Exploration);   // ← the new continuous dungeon
         }
 
