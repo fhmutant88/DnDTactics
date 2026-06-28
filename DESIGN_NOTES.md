@@ -476,3 +476,15 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   light another from stock if any, else go dark.
 - Starting value ~10 (tunable; torches cheap/common so could be 10–20). Price 1 GP.
 - Supersedes the "2 long rests" model (which needed the deferred rest plumbing). This is independent.
+
+## Lighting (carried torches) — COMPLETE
+- Torch item (1 GP), granted at creation. Carried torch toggled lit/stowed via exploration HUD.
+- Lit torch illuminates ~4 tiles (TorchRadiusTiles) around bearer, with LOS — OBJECTIVE (bright for
+  ALL, regardless of darkvision). Integrated into FogOfWar.Recompute (bright = lit ∪ selected sight)
+  and chest visibility (chest in torchlight visible to all).
+- Consumption: N-lights model (TorchLightsPerTorch=10). Lighting a fresh torch consumes 1 Torch from
+  inventory + sets counter; each LIGHT action decrements; stow is free; at 0 the active torch is spent
+  (light another from stock or go dark). Per-character "active torch" counter (no per-instance inventory).
+- Confirmed: no-darkvision human sees in torchlight; stow/relight consumes correctly; chests in torchlight show.
+- FOLLOW-ON: placed/ambient dungeon lights (some tiles always-lit, randomized per dungeon) — quick
+  additive layer (mark certain tiles lit; fold into the litTiles set in FogOfWar + chest visibility).

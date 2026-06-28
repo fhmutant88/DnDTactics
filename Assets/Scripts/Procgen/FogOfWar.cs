@@ -15,6 +15,7 @@ namespace DnDTactics.Procgen
     {
         public DungeonVisualizer dungeon;
         public ExplorationManager exploration;
+        public ExplorationEncounters encounters;
 
         private TacticalGrid grid;
         private readonly HashSet<GridCoord> everExplored = new();  // permanent map knowledge
@@ -24,6 +25,7 @@ namespace DnDTactics.Procgen
         {
             if (dungeon == null) dungeon = FindFirstObjectByType<DungeonVisualizer>();
             if (exploration == null) exploration = FindFirstObjectByType<ExplorationManager>();
+            if (encounters == null) encounters = FindFirstObjectByType<ExplorationEncounters>();
         }
 
         // Called by ExplorationManager whenever the party's positions change.
@@ -33,7 +35,12 @@ namespace DnDTactics.Procgen
             grid = dungeon.Grid;
             if (grid == null || exploration == null) return;
 
-            // 1) UNION of all members' raw sight → MAPPED EVER (permanent layout knowledge).
+            // Gather party member positions once.
+            var memberPositions = new List<GridCoord>();
+            foreach (var (coord, _) in exploration.CharacterVisionData())
+                memberPositions.Add(coord);
+
+            // 1) UNION of all members' raw sight (range-limited) → MAPPED EVER.
             var unionVisible = new HashSet<GridCoord>();
             foreach (var (coord, darkvisionFeet) in exploration.CharacterVisionData())
             {
@@ -42,18 +49,33 @@ namespace DnDTactics.Procgen
                     unionVisible.Add(t);
             }
 
-            // 2) LIT tiles (objective): within a lit torch's radius, with LOS from the torch.
-            var litTiles = new HashSet<GridCoord>();
+            // 2) Raw lit tiles (what the lights illuminate, LOS from the light source).
+            var rawLit = new HashSet<GridCoord>();
             foreach (var torchPos in exploration.LitTorchPositions())
                 foreach (var t in Vision.VisibleTiles(torchPos, ExplorationManager.TorchRadiusTiles, grid))
-                    litTiles.Add(t);
+                    rawLit.Add(t);
+            if (encounters != null)
+                foreach (var lightPos in encounters.PlacedLights)
+                    foreach (var t in Vision.VisibleTiles(lightPos, encounters.PlacedLightRadius, grid))
+                        rawLit.Add(t);
 
-            // Map anything seen raw OR lit.
+            // 3) A lit tile is only REVEALED to the party if a member has LOS to it (light carries,
+            //    so no range limit — but you must be able to SEE it, not be walled off from it).
+            var litAndSeen = new HashSet<GridCoord>();
+            foreach (var lit in rawLit)
+            {
+                foreach (var mp in memberPositions)
+                {
+                    if (Vision.HasLineOfSight(mp, lit, grid)) { litAndSeen.Add(lit); break; }
+                }
+            }
+
+            // Map anything seen raw OR lit-and-seen.
             foreach (var c in unionVisible) everExplored.Add(c);
-            foreach (var c in litTiles) everExplored.Add(c);
+            foreach (var c in litAndSeen) everExplored.Add(c);
 
-            // 3) BRIGHT = lit tiles (objective, all) ∪ SELECTED character's sight (subjective).
-            var bright = new HashSet<GridCoord>(litTiles);
+            // 4) BRIGHT = lit-and-seen (objective) ∪ SELECTED character's sight (subjective).
+            var bright = new HashSet<GridCoord>(litAndSeen);
             var sel = exploration.SelectedVisionData();
             if (sel.HasValue)
             {
@@ -62,13 +84,12 @@ namespace DnDTactics.Procgen
                     bright.Add(t);
             }
 
-            // 4) Paint mapped tiles: Visible if bright, else Explored. Unseen stays hidden.
+            // 5) Paint.
             foreach (var c in everExplored)
             {
-                if (bright.Contains(c))
-                    dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Visible);
-                else
-                    dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Explored);
+                dungeon.SetTileVisibility(c,
+                    bright.Contains(c) ? DungeonVisualizer.TileVisibility.Visible
+                                       : DungeonVisualizer.TileVisibility.Explored);
             }
         }
     }

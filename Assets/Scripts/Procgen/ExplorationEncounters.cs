@@ -22,12 +22,26 @@ namespace DnDTactics.Procgen
 
         [Header("Encounter content")]
         public List<MonsterStats> monsterPool = new();
-       
+
         [Header("Placement")]
         [Tooltip("How many rooms (after the first) get an encounter.")]
         public int encounterCount = 3;
         [Tooltip("Trigger when the party gets this close (tiles) to an encounter's room center.")]
         public int triggerRadius = 2;
+
+        [Header("Lighting")]
+        [Tooltip("Chance each room contains a permanent light source (brazier).")]
+        [Range(0f, 1f)] public float roomLightChance = 0.4f;
+        [Tooltip("Tiles lit around a placed light source.")]
+        public int placedLightRadius = 5;
+        public IEnumerable<GridCoord> PlacedLights
+        {
+            get { foreach (var b in braziers) yield return b.cell; }
+        }
+        public int PlacedLightRadius => placedLightRadius;
+
+        class Brazier { public GridCoord cell; public GameObject token; }
+        private readonly List<Brazier> braziers = new();
 
         [Tooltip("Every dungeon has at least this many chests (guaranteed reward).")]
         public int minChests = 1;
@@ -49,7 +63,7 @@ namespace DnDTactics.Procgen
         {
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
             if (combat != null) combat.startDormant = true;
-            }
+        }
 
         void Start()
         {
@@ -63,7 +77,7 @@ namespace DnDTactics.Procgen
                 combat.OnEncounterEnded += OnCombatEnded;
             }
             if (dungeon != null) dungeon.OnGenerated += PlaceMarkers;
-            
+
             // ... existing Start code ...
             StartCoroutine(HideCombatHudNextFrame());
         }
@@ -130,6 +144,52 @@ namespace DnDTactics.Procgen
                 if (grid.IsWalkable(cc)) chests.Add(MakeChest(cc));
             }
             Debug.Log($"Placed {chests.Count} chest(s) in the dungeon (min {minChests}).");
+
+            // Placed light sources: each room may contain a permanent brazier.
+            braziers.Clear();
+            int darkGate = Random.Range(1, 101);
+            if (darkGate >= 50 && rooms.Count > 0)
+            {
+                int pctRoll = Random.Range(1, 101);
+                int litPercent = Mathf.CeilToInt(pctRoll / 10f) * 10;
+                int litRooms = Mathf.Clamp(Mathf.RoundToInt(rooms.Count * litPercent / 100f),
+                                           0, rooms.Count);
+
+                var indices = new List<int>();
+                for (int i = 0; i < rooms.Count; i++) indices.Add(i);
+                for (int i = 0; i < litRooms; i++)
+                {
+                    int pick = Random.Range(i, indices.Count);
+                    (indices[i], indices[pick]) = (indices[pick], indices[i]);
+                    var r = rooms[indices[i]];
+                    var lc = new GridCoord(r.CenterX, r.CenterY);
+                    if (grid.IsWalkable(lc))
+                    {
+                        braziers.Add(new Brazier { cell = lc, token = MakeBrazierToken(lc) });
+                    }
+                }
+                Debug.Log($"Dungeon lighting: {litPercent}% of rooms lit ({braziers.Count} braziers).");
+            }
+            else
+            {
+                Debug.Log("Dungeon lighting: fully dark (no placed lights).");
+            }
+        }
+
+        GameObject MakeBrazierToken(GridCoord cell)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "Brazier";
+            go.transform.SetParent(transform);
+            go.transform.localScale = new Vector3(0.4f, 0.7f, 0.4f);
+            go.transform.position = dungeon.Grid.CoordToWorld(cell) + Vector3.up * 0.35f;
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            mat.SetColor("_BaseColor", new Color(1f, 0.6f, 0.15f));
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", new Color(1f, 0.5f, 0.1f) * 2f);
+            go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            go.SetActive(false); // hidden until a party member has LOS to it
+            return go;
         }
 
         void Update()
@@ -158,28 +218,75 @@ namespace DnDTactics.Procgen
             }
 
             UpdateChestVisibility(); // show/hide chest tokens per the selected character's sight
+            UpdateBrazierVisibility();
         }
 
         void UpdateChestVisibility()
         {
-            var sel = exploration.SelectedVisionData();
+            if (grid == null || exploration == null) return;
+
+            // Party member positions (for LOS-gating lit tiles).
+            var positions = new List<GridCoord>();
+            foreach (var (coord, _) in exploration.CharacterVisionData()) positions.Add(coord);
+
+            // Tiles the SELECTED character sees (subjective, range-limited).
             var visible = new HashSet<GridCoord>();
+            var sel = exploration.SelectedVisionData();
             if (sel.HasValue)
             {
                 int radius = DnDTactics.Rules.Vision.SightRadiusTiles(sel.Value.darkvisionFeet);
-                visible = DnDTactics.Rules.Vision.VisibleTiles(sel.Value.coord, radius, grid);
-            }
-            // Lit tiles (objective) — a chest in torchlight is visible to all.
-            foreach (var torchPos in exploration.LitTorchPositions())
-                foreach (var t in DnDTactics.Rules.Vision.VisibleTiles(torchPos, ExplorationManager.TorchRadiusTiles, grid))
+                foreach (var t in DnDTactics.Rules.Vision.VisibleTiles(sel.Value.coord, radius, grid))
                     visible.Add(t);
+            }
 
             foreach (var ch in chests)
             {
                 if (ch.token == null) continue;
                 if (ch.looted) { ch.token.SetActive(false); continue; }
-                ch.token.SetActive(visible.Contains(ch.cell));
+
+                bool seen = visible.Contains(ch.cell);
+
+                // OR: the chest's tile is lit AND a party member has LOS to it.
+                if (!seen && IsTileLit(ch.cell) && AnyMemberHasLOS(ch.cell, positions))
+                    seen = true;
+
+                ch.token.SetActive(seen);
             }
+        }
+
+        void UpdateBrazierVisibility()
+        {
+            if (grid == null || exploration == null) return;
+            var positions = new List<GridCoord>();
+            foreach (var (coord, _) in exploration.CharacterVisionData()) positions.Add(coord);
+
+            foreach (var b in braziers)
+            {
+                if (b.token == null) continue;
+                bool seen = false;
+                foreach (var p in positions)
+                    if (DnDTactics.Rules.Vision.HasLineOfSight(p, b.cell, grid)) { seen = true; break; }
+                b.token.SetActive(seen);
+            }
+        }
+
+        // Is this tile within any active light source's lit area (torch or brazier)?
+        bool IsTileLit(GridCoord cell)
+        {
+            foreach (var torchPos in exploration.LitTorchPositions())
+                if (DnDTactics.Rules.Vision.VisibleTiles(torchPos, ExplorationManager.TorchRadiusTiles, grid).Contains(cell))
+                    return true;
+            foreach (var b in braziers)
+                if (DnDTactics.Rules.Vision.VisibleTiles(b.cell, placedLightRadius, grid).Contains(cell))
+                    return true;
+            return false;
+        }
+
+        bool AnyMemberHasLOS(GridCoord cell, List<GridCoord> positions)
+        {
+            foreach (var p in positions)
+                if (DnDTactics.Rules.Vision.HasLineOfSight(p, cell, grid)) return true;
+            return false;
         }
 
         int Distance(GridCoord a, GridCoord b) =>
@@ -308,3 +415,4 @@ namespace DnDTactics.Procgen
         }
     }
 }
+    
