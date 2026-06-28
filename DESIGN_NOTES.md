@@ -546,3 +546,19 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
 - NUANCE for later: area-of-effect spells (fireball etc.) MAY legitimately catch allies in their
   radius (5e AoE doesn't discriminate). So "no friendly fire" applies to DIRECT/targeted attacks;
   AoE friendly-fire is a separate (intended) consideration when spellcasting is built.
+
+## XP & leveling — design (building now, partially)
+- XP ACCRUAL (continuous): defeated monsters' XP (already on MonsterStats) divided among all
+  DEPLOYED members (downed included). Accrues to Character.currentXP during the run. If a downed
+  character is never revived, their XP is lost with them.
+- LEVEL-UP is NOT instant. Earning enough XP sets a PENDING LEVEL-UP state (a character "can level").
+  Notification: a `*` by the character's name/card (art-polished later). 
+- Level-up is APPLIED on a LONG REST (triggers a level-up screen for any pending character):
+  - TOWN long rest (RestService.LongRest exists) → buildable NOW.
+  - IN-DUNGEON long rest (DEFERRED rest cluster) → levels up mid-run when built. Player's choice to
+    rest in-dungeon (risking monster respawns) vs. wait for town.
+  - NEVER during combat.
+- So leveling makes long rests more meaningful (heal + level), and feeds the rest-gamble tension.
+- BUILD NOW: XP accrual from fights + pending-level-up state + `*` notification + apply-on-town-rest.
+  IN-DUNGEON leveling comes with the deferred in-dungeon resting system.
+- Run structure (depth = level+2 etc.) reads party level, which now actually changes via this system.

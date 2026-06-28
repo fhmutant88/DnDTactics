@@ -20,6 +20,10 @@ namespace DnDTactics.Combat
         public string BarracksMemberId { get; private set; }
         public void SetBarracksMemberId(string id) => BarracksMemberId = id;
 
+        // If this combatant is a monster, the XP awarded for defeating it.
+        public int XpReward { get; private set; }
+        public void SetXpReward(int xp) => XpReward = xp;
+
         private Renderer bodyRenderer;
         private Color baseColor;
         private MaterialPropertyBlock mpb;

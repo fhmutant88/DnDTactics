@@ -126,25 +126,31 @@ namespace DnDTactics.Characters
             currentHP = hp;
         }
 
-        // ---- XP / leveling ----
+        // ---- XP / leveling (deferred: earn now, level up on a long rest) ----
 
-        // Adds XP and applies any level-ups. Returns true if at least one level was gained.
-        public bool AddXp(int amount)
+        // Accrue XP. Does NOT change level — leveling applies on a long rest.
+        public void AddXp(int amount)
         {
-            if (amount <= 0) return false;
+            if (amount <= 0) return;
+            currentXp += amount;
+        }
 
+        // The level this character's XP qualifies them for (may exceed current level).
+        public int QualifiedLevel => Progression.LevelForXp(currentXp);
+
+        // True if enough XP earned to level up (pending).
+        public bool LevelUpPending => QualifiedLevel > level;
+
+        // Apply pending level-up (called on a long rest). Returns levels gained (0 if none).
+        public int ApplyPendingLevelUp()
+        {
+            int qualified = QualifiedLevel;
+            if (qualified <= level) return 0;
             int oldLevel = level;
             int oldMaxHP = MaxHP;
-
-            currentXp += amount;
-            level = Progression.LevelForXp(currentXp);
-
-            if (level > oldLevel)
-            {
-                currentHP += MaxHP - oldMaxHP; // gain the new HP from leveling
-                return true;
-            }
-            return false;
+            level = qualified;
+            currentHP += MaxHP - oldMaxHP;
+            return level - oldLevel;
         }
     }
 }

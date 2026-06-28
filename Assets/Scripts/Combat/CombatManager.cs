@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections;
 using UnityEngine;
 using DnDTactics.Rules;
@@ -41,6 +42,7 @@ namespace DnDTactics.Combat
         public bool startDormant = false;   // exploration sets this; combat waits to be triggered
         private bool encounterConcluded = false;
         private bool encounterRunning = false;   // ← add this line here
+        private int defeatedEnemyXp = 0;
 
         // Fires once when the encounter resolves. bool = player victory.
         public event System.Action<bool> OnEncounterEnded;
@@ -79,10 +81,9 @@ namespace DnDTactics.Combat
         // External setup: spawn a monster from MonsterStats at a coord.
         public Combatant SpawnMonster(DnDTactics.Data.MonsterStats stats, GridCoord coord)
         {
-            // Wrap the monster's stats in a lightweight Character-like setup.
-            // For now we reuse Character via a simple adapter (see note below).
             var character = MonsterAdapter.ToCharacter(stats);
             var c = SpawnExisting(character, Team.Enemy, coord, enemyColor, enemyWeapon);
+            if (c != null) c.SetXpReward(stats.XpReward);
             return c;
         }
 
@@ -118,6 +119,7 @@ namespace DnDTactics.Combat
             encounterRunning = true;
             encounterConcluded = false;
             rewardsGranted = false;
+            defeatedEnemyXp = 0;
             BeginEncounter();
         }
 
@@ -432,6 +434,7 @@ namespace DnDTactics.Combat
                 }
             }
 
+            if (c.Team == Team.Enemy) defeatedEnemyXp += c.XpReward;
             Destroy(c.gameObject);
             CheckForVictory();
         }
@@ -487,11 +490,25 @@ namespace DnDTactics.Combat
             else if (roll < 0.50f) drop = "HealingPotion";
             if (drop != null) leader.inventory.Add(drop, 1);
 
+            // Award XP from defeated enemies, divided among deployed members (downed included).
+            if (defeatedEnemyXp > 0)
+            {
+                var deployed = slot.party.LivingMembers(slot.barracks).ToList();
+                if (deployed.Count > 0)
+                {
+                    int share = Mathf.Max(1, defeatedEnemyXp / deployed.Count);
+                    foreach (var m in deployed)
+                        m.character.AddXp(share);
+                    Debug.Log($"Awarded {share} XP each to {deployed.Count} members ({defeatedEnemyXp} total).");
+                }
+            }
+
             DnDTactics.Core.GameSession.Instance.SaveActive();
             Debug.Log($"VICTORY! {leader.character.characterName} (leader) earned {gold} gold " +
                       $"(their purse: {leader.gold})" +
                       (drop != null ? $", found 1x {drop}." : ".") +
                       " Redistribute via the transfer screen.");
+
         }
 
         // Remove all combatants/occupancy so the manager is ready for the next encounter.
