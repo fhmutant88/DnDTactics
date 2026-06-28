@@ -354,6 +354,7 @@ namespace DnDTactics.UI
             {
                 var member = session.ActiveSlot.barracks.Add(c);
                 member.inventory.Add("PortalScroll", 1);   // every new hero starts with one
+                member.inventory.Add("Torch", 1);          // a torch to manage light
                 session.SaveActive();
                 int n = session.ActiveSlot.barracks.members.Count;
                 statusText.text = $"Added {c.characterName}!  Barracks now holds {n}. " +

@@ -425,3 +425,54 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
 - So traps = chest-style sight gate + a Perception-vs-DC roll. Same machinery, different manifestation.
 - Example: elf thief selected, sees a floor tile with a trap in darkvision LOS → rolls Perception vs DC.
   Human selected (can't see that tile in the dark) → no roll, no detection → blunders in.
+
+## Vision milestone — COMPLETE
+- Vision rules class (DnDTactics.Rules.Vision): VisibleTiles(origin, radiusTiles, grid) =
+  Chebyshev range + Bresenham LOS (walls block). SightRadiusTiles(darkvisionFeet) = max(baseline 1,
+  darkvision/5). Baseline 1 tile (3x3), darkvision from Species.darkvisionRange (60ft = 12 tiles).
+- DungeonVisualizer: per-tile GameObject + own material, tiles start hidden; SetTileVisibility
+  (Unseen=hidden / Explored=dimmed / Visible=full).
+- FogOfWar: everExplored = UNION of all living members' sight (permanent map knowledge). Brightness
+  per the SELECTED character's live sight (Visible) else Explored. Recompute on move + on selection change.
+- Contents (chests): tokens shown only when the SELECTED character currently sees the tile; hide on loot.
+- Confirmed working: human (1-tile) vs elf (darkvision) brightness + chest visibility differ by selection.
+- Foundation for deferred: traps (contents gate + Perception-vs-DC roll), monster-vision/ambush,
+  in-combat unseen-attacker rules, lighting (raises baseline in lit areas). All reuse Vision + LOS.
+
+## Lighting milestone — DESIGN ANSWERS (build after break)
+- BOTH carried light (character holds a torch → lights a radius around them) AND placed/ambient
+  light (some dungeon tiles/areas lit by braziers etc.).
+- Lit tiles become visible to ANYONE with LOS, regardless of darkvision (light overrides the
+  darkness baseline → a no-darkvision human sees normally within lit areas).
+- Dungeons randomly lit/unlit: some builds have light sources, some are pitch black (darkness
+  + no torch + no darkvision = the harsh near-blind baseline). Randomization per dungeon build.
+- TORCH RESOURCE MODEL (decided): a torch "just works" while held/in-use (lights its radius);
+  goes dark when STOWED. No burn-out timer. Cost is opportunity (a hand/slot + the toggle choice),
+  not duration. Toggling held vs. stowed is the meaningful decision.
+- Integration: lighting RAISES effective sight in lit areas — layers on the existing Vision system
+  (lit tile + LOS = visible regardless of darkvision). Vision.SightRadiusTiles / VisibleTiles get a
+  lighting input. Unblocks the eventual Model-2 "main view = current sight only" presentation.
+- OPEN (resolve when building): torch light radius (tiles); is a torch an inventory item every
+  character can carry/toggle; do placed dungeon lights show as always-lit tiles; how carried-light
+  from MULTIPLE party members combines; interaction with the per-selected-character brightness
+  (does a lit area stay bright even when a low-vision character is selected? — likely YES, light is
+  objective, darkvision is the character-subjective part).
+
+## Item weights (DEFERRED — systemic)
+- Items need WEIGHTS eventually, for carrying capacity / encumbrance (and it's why fallen bodies
+  stay where they fall rather than being dragged). Affects how much a character can carry/loot.
+- Add a `weight` field to ItemDefinition; sum carried weight per character vs. a capacity (STR-based
+  in 5e). Build with an inventory/encumbrance pass (alongside equipment/loadout systems).
+
+## Torch consumption — REVISED to "N lights" (simpler, supersedes the 2-long-rest model)
+- A torch has a fixed number of LIGHTS (uses), e.g. 10. Each time it's LIT, one use is consumed.
+  At 0, the torch is spent (removed). NO dependency on the long-rest system — self-contained,
+  buildable now.
+- Per-light-action: light → stow → light again = 2 uses. So toggling has a real cost (relighting
+  burns a use) → decision: keep it burning vs. stow-and-relight-later. Leaving it lit avoids relight cost.
+- IMPLEMENTATION: per-character "active torch" with a remaining-lights counter. First light when none
+  active → consume one Torch from inventory (id+count), set counter = torchLights (e.g. 10). Each
+  subsequent LIGHT action decrements. Stow = free (no decrement). Counter 0 → active torch spent;
+  light another from stock if any, else go dark.
+- Starting value ~10 (tunable; torches cheap/common so could be 10–20). Price 1 GP.
+- Supersedes the "2 long rests" model (which needed the deferred rest plumbing). This is independent.

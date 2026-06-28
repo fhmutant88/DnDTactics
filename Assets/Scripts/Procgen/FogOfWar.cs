@@ -33,7 +33,7 @@ namespace DnDTactics.Procgen
             grid = dungeon.Grid;
             if (grid == null || exploration == null) return;
 
-            // 1) UNION of all living members' sight → defines what's MAPPED EVER (permanent).
+            // 1) UNION of all members' raw sight → MAPPED EVER (permanent layout knowledge).
             var unionVisible = new HashSet<GridCoord>();
             foreach (var (coord, darkvisionFeet) in exploration.CharacterVisionData())
             {
@@ -41,22 +41,31 @@ namespace DnDTactics.Procgen
                 foreach (var t in Vision.VisibleTiles(coord, radius, grid))
                     unionVisible.Add(t);
             }
-            foreach (var c in unionVisible) everExplored.Add(c); // accumulate permanent knowledge
 
-            // 2) SELECTED character's sight → defines what's BRIGHT right now.
-            var selectedVisible = new HashSet<GridCoord>();
+            // 2) LIT tiles (objective): within a lit torch's radius, with LOS from the torch.
+            var litTiles = new HashSet<GridCoord>();
+            foreach (var torchPos in exploration.LitTorchPositions())
+                foreach (var t in Vision.VisibleTiles(torchPos, ExplorationManager.TorchRadiusTiles, grid))
+                    litTiles.Add(t);
+
+            // Map anything seen raw OR lit.
+            foreach (var c in unionVisible) everExplored.Add(c);
+            foreach (var c in litTiles) everExplored.Add(c);
+
+            // 3) BRIGHT = lit tiles (objective, all) ∪ SELECTED character's sight (subjective).
+            var bright = new HashSet<GridCoord>(litTiles);
             var sel = exploration.SelectedVisionData();
             if (sel.HasValue)
             {
                 int radius = Vision.SightRadiusTiles(sel.Value.darkvisionFeet);
-                selectedVisible = Vision.VisibleTiles(sel.Value.coord, radius, grid);
+                foreach (var t in Vision.VisibleTiles(sel.Value.coord, radius, grid))
+                    bright.Add(t);
             }
 
-            // 3) Paint every mapped tile: Visible if the SELECTED char sees it, else Explored (dimmed).
-            //    (Unseen tiles — never mapped — stay hidden, untouched.)
+            // 4) Paint mapped tiles: Visible if bright, else Explored. Unseen stays hidden.
             foreach (var c in everExplored)
             {
-                if (selectedVisible.Contains(c))
+                if (bright.Contains(c))
                     dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Visible);
                 else
                     dungeon.SetTileVisibility(c, DungeonVisualizer.TileVisibility.Explored);

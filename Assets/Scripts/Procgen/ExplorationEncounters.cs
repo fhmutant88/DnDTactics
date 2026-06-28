@@ -163,17 +163,22 @@ namespace DnDTactics.Procgen
         void UpdateChestVisibility()
         {
             var sel = exploration.SelectedVisionData();
-            HashSet<GridCoord> visible = null;
+            var visible = new HashSet<GridCoord>();
             if (sel.HasValue)
             {
                 int radius = DnDTactics.Rules.Vision.SightRadiusTiles(sel.Value.darkvisionFeet);
                 visible = DnDTactics.Rules.Vision.VisibleTiles(sel.Value.coord, radius, grid);
             }
+            // Lit tiles (objective) — a chest in torchlight is visible to all.
+            foreach (var torchPos in exploration.LitTorchPositions())
+                foreach (var t in DnDTactics.Rules.Vision.VisibleTiles(torchPos, ExplorationManager.TorchRadiusTiles, grid))
+                    visible.Add(t);
+
             foreach (var ch in chests)
             {
                 if (ch.token == null) continue;
                 if (ch.looted) { ch.token.SetActive(false); continue; }
-                ch.token.SetActive(visible != null && visible.Contains(ch.cell));
+                ch.token.SetActive(visible.Contains(ch.cell));
             }
         }
 

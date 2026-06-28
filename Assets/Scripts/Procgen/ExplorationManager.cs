@@ -49,6 +49,8 @@ namespace DnDTactics.Procgen
             public GridCoord coord;
             public Coroutine moving;
             public Vector3 baseScale;   // remember normal size for selection scaling
+            public bool torchLit;       // is this character's torch currently held/lit?
+            public int torchLights;     // remaining lights on the active torch (0 = none active)
         }
 
         private readonly List<CharToken> tokens = new();
@@ -222,6 +224,66 @@ namespace DnDTactics.Procgen
                 MoveSelectedTo(target);
             else
                 MoveGroupTo(target);
+        }
+
+        public const int TorchRadiusTiles = 4;   // ~20 ft bright radius
+        public const int TorchLightsPerTorch = 10; // how many times a torch can be lit
+
+        // Toggle the selected character's torch. Lighting consumes a use (and a Torch from inventory
+        // when starting a fresh one). Stowing is free.
+        public void ToggleSelectedTorch()
+        {
+            if (selected == null) return;
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null || string.IsNullOrEmpty(selected.memberId)) return;
+            var m = slot.barracks.GetById(selected.memberId);
+            if (m == null) return;
+
+            if (selected.torchLit)
+            {
+                // Stow — free, no use consumed.
+                selected.torchLit = false;
+                Debug.Log($"{m.character.characterName} stows the torch ({selected.torchLights} lights left).");
+            }
+            else
+            {
+                // Lighting it.
+                if (selected.torchLights <= 0)
+                {
+                    // Need to start a fresh torch from inventory.
+                    if (!m.inventory.Has("Torch")) { Debug.Log("No torch to light."); return; }
+                    m.inventory.Remove("Torch", 1);
+                    selected.torchLights = TorchLightsPerTorch;
+                    GameSession.Instance.SaveActive();
+                }
+                // Consume one light (one use) when lighting.
+                selected.torchLights--;
+                selected.torchLit = true;
+                Debug.Log($"{m.character.characterName} lights a torch ({selected.torchLights} lights left).");
+                if (selected.torchLights < 0) selected.torchLights = 0;
+            }
+            if (fog != null) fog.Recompute();
+        }
+
+        // For the HUD.
+        public bool SelectedHasTorchAvailable()
+        {
+            if (selected == null) return false;
+            if (selected.torchLights > 0) return true; // an active torch still has lights
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null || string.IsNullOrEmpty(selected.memberId)) return false;
+            var m = slot.barracks.GetById(selected.memberId);
+            return m != null && m.inventory.Has("Torch");
+        }
+
+        public bool SelectedTorchLit() => selected != null && selected.torchLit;
+        public int SelectedTorchLights() => selected != null ? selected.torchLights : 0;
+
+        // Positions of all currently-lit torches (for lighting computation).
+        public IEnumerable<GridCoord> LitTorchPositions()
+        {
+            foreach (var t in tokens)
+                if (t.torchLit) yield return t.coord;
         }
 
         // Group move: leader (token[0]) goes to target; followers cluster around it.

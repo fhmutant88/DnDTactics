@@ -25,6 +25,9 @@ namespace DnDTactics.UI
         Button modeButton;
         TMP_Text modeLabel;
 
+        Button torchButton;
+        TMP_Text torchLabel;
+
         SaveSlot Slot => GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
 
         void Start()
@@ -49,6 +52,17 @@ namespace DnDTactics.UI
                 selectedText.text = $"Selected: {exploration.SelectedName}";
             if (modeLabel != null && exploration != null)
                 modeLabel.text = $"Mode: {exploration.ModeName}";
+
+            if (torchLabel != null && exploration != null)
+            {
+                if (exploration.SelectedTorchLit())
+                    torchLabel.text = $"Torch: Lit — stow ({exploration.SelectedTorchLights()})";
+                else if (exploration.SelectedHasTorchAvailable())
+                    torchLabel.text = $"Torch: light ({exploration.SelectedTorchLights()})";
+                else
+                    torchLabel.text = "No Torch";
+                if (torchButton != null) torchButton.interactable = exploration.SelectedTorchLit() || exploration.SelectedHasTorchAvailable();
+            }
         }
 
         int CountScrolls()
@@ -124,6 +138,18 @@ namespace DnDTactics.UI
             modeLabel.transform.SetParent(mgo.transform, false);
             var mrt = modeLabel.rectTransform;
             mrt.anchorMin = Vector2.zero; mrt.anchorMax = Vector2.one; mrt.offsetMin = Vector2.zero; mrt.offsetMax = Vector2.zero;
+
+            var tgo = new GameObject("TorchButton", typeof(RectTransform));
+            tgo.transform.SetParent(canvas.transform, false);
+            tgo.AddComponent<Image>().color = new Color(0.55f, 0.4f, 0.2f, 0.95f);
+            torchButton = tgo.AddComponent<Button>();
+            Anchor(tgo.GetComponent<RectTransform>(), new Vector2(0f, 0f), new Vector2(250, 20), new Vector2(220, 54));
+            torchButton.onClick.AddListener(() => { if (exploration != null) exploration.ToggleSelectedTorch(); });
+
+            torchLabel = MakeText("TorchLabel", 20, TextAlignmentOptions.Center);
+            torchLabel.transform.SetParent(tgo.transform, false);
+            var trt = torchLabel.rectTransform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
         }
 
         TMP_Text MakeText(string name, float size, TextAlignmentOptions align)
