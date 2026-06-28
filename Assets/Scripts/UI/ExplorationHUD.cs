@@ -47,6 +47,8 @@ namespace DnDTactics.UI
             portalButton.interactable = scrolls > 0 && !inCombat;
             infoText.text = inCombat ? "In combat — can't portal."
                           : "Exploring. Portal to bank this run and return to town.";
+            if (encounters != null && encounters.DungeonComplete && infoText != null)
+                infoText.text = "DUNGEON COMPLETE! Returning to town…";
 
             if (selectedText != null && exploration != null)
                 selectedText.text = $"Selected: {exploration.SelectedName}";

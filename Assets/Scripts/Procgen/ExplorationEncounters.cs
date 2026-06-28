@@ -19,6 +19,7 @@ namespace DnDTactics.Procgen
         public DungeonVisualizer dungeon;
         public CombatManager combat;
         public DnDTactics.UI.CombatHUD combatHUD;
+        public bool DungeonComplete => dungeonComplete;
 
         [Header("Encounter content")]
         public List<MonsterStats> monsterPool = new();
@@ -58,6 +59,8 @@ namespace DnDTactics.Procgen
         private TacticalGrid grid;
         private bool inCombat = false;
         public bool InCombat => inCombat;
+        private readonly HashSet<int> visitedRooms = new();   // indices of rooms entered
+        private bool dungeonComplete = false;
 
         void Awake()
         {
@@ -219,6 +222,7 @@ namespace DnDTactics.Procgen
 
             UpdateChestVisibility(); // show/hide chest tokens per the selected character's sight
             UpdateBrazierVisibility();
+            TrackRoomsAndCompletion();
         }
 
         void UpdateChestVisibility()
@@ -268,6 +272,68 @@ namespace DnDTactics.Procgen
                     if (DnDTactics.Rules.Vision.HasLineOfSight(p, b.cell, grid)) { seen = true; break; }
                 b.token.SetActive(seen);
             }
+        }
+
+        void TrackRoomsAndCompletion()
+        {
+            if (dungeonComplete || dungeon == null || dungeon.Map == null) return;
+
+            var rooms = dungeon.Map.Rooms;
+
+            // Mark rooms as visited when any character is inside their bounds.
+            foreach (var coord in exploration.CharacterCoords)
+            {
+                for (int i = 0; i < rooms.Count; i++)
+                {
+                    if (visitedRooms.Contains(i)) continue;
+                    var r = rooms[i];
+                    if (coord.x >= r.x && coord.x < r.x + r.width &&
+                        coord.z >= r.y && coord.z < r.y + r.height)
+                    {
+                        visitedRooms.Add(i);
+                    }
+                }
+            }
+
+            // Completion: every room visited AND every encounter cleared (triggered = won,
+            // since surviving to explore means victory).
+            bool allRoomsVisited = visitedRooms.Count >= rooms.Count;
+            bool allEncountersCleared = markers.TrueForAll(m => m.triggered);
+
+            if (allRoomsVisited && allEncountersCleared && !inCombat)
+                CompleteDungeon();
+        }
+
+        void CompleteDungeon()
+        {
+            dungeonComplete = true;
+            Debug.Log("=== DUNGEON COMPLETE! All rooms explored and all enemies defeated. ===");
+
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot != null)
+            {
+                // Simple completion reward to the leader (XP/gold expand later).
+                string leaderId = slot.party.EnsureLeader(slot.barracks);
+                var leader = leaderId != null ? slot.barracks.GetById(leaderId) : null;
+                if (leader != null)
+                {
+                    int bonus = 150;
+                    leader.gold += bonus;
+                    Debug.Log($"Completion reward: {leader.character.characterName} gains {bonus} gold.");
+                }
+                // (Later: recover fallen here per the recovery rules; grant XP; mark progress.)
+                GameSession.Instance.SaveActive();
+            }
+
+            // Stop exploration and return to town after a brief beat.
+            exploration.SetExploring(false);
+            StartCoroutine(ReturnToTownAfterDelay());
+        }
+
+        System.Collections.IEnumerator ReturnToTownAfterDelay()
+        {
+            yield return new WaitForSeconds(2.5f);
+            DnDTactics.Core.SceneFlow.Go(DnDTactics.Core.SceneFlow.Roster);
         }
 
         // Is this tile within any active light source's lit area (torch or brazier)?

@@ -488,3 +488,14 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
 - Confirmed: no-darkvision human sees in torchlight; stow/relight consumes correctly; chests in torchlight show.
 - FOLLOW-ON: placed/ambient dungeon lights (some tiles always-lit, randomized per dungeon) — quick
   additive layer (mark certain tiles lit; fold into the litTiles set in FogOfWar + chest visibility).
+
+## Lighting — FULLY COMPLETE (carried + placed, all LOS-gated)
+- Carried torches: held/stowed, ~4-tile objective light, N-lights consumption (10/torch). DONE.
+- Placed braziers: two-stage gen (d100: 1-49 dark; else d100→decile % of ROOMS lit). ~5-tile objective light.
+- CRITICAL FIX: lit tiles are only revealed if a party member has LINE OF SIGHT to them (light is
+  objective but PERCEIVING it needs LOS — a brazier behind walls doesn't leak onto the map).
+  Applied consistently to: fog tiles (FogOfWar.Recompute litAndSeen), chest tokens, brazier tokens.
+- Brazier tokens + chest tokens start hidden (SetActive false); shown only when a party member has
+  LOS to their tile (UpdateBrazierVisibility / UpdateChestVisibility).
+- Confirmed: undiscovered/walled-off lit rooms, their braziers, and chests all stay hidden until a
+  character has LOS into the room; then tiles + tokens reveal together. No leaking through walls.
