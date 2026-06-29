@@ -636,3 +636,23 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   and handles mixed levels precisely.
 - RUN DEPTH (= party level + 2) and BOSS GOLD (= level × 500): use AVERAGE party level (rounded),
   since these need a single number. AveragePartyLevel helper (rounded, min 1).
+
+## Boss encounter sizing — FULL party strength (decided)
+- Boss budget uses the FULL DEPLOYED party's levels (including downed/dead members' levels), NOT just
+  living survivors. A depleted party still faces a full-strength boss — that's the climax's tension.
+- Rationale: eventually in-dungeon rest/heal/revive lets you arrive at the boss in good shape; choosing
+  not to (or failing) is the player's managed risk. The boss doesn't scale down to your losses.
+- Boss = Hard difficulty + a spike multiplier, includeBoss:true (one strong monster anchors it),
+  in a single big ARENA room. Contrast: normal encounters scale to LIVING party (survivor-sized).
+- BUG that surfaced this: by depth 3 the party was 1 survivor, so the survivor-based budget made the
+  "boss" trivially small (75 XP, 1 goblin). Fix: boss uses full-party budget.
+
+## Boss encounter sizing — FULL party strength (decided)
+- Boss budget uses the FULL DEPLOYED party's levels (including downed/dead members' levels), NOT just
+  living survivors. A depleted party still faces a full-strength boss — that's the climax's tension.
+- Rationale: eventually in-dungeon rest/heal/revive lets you arrive at the boss in good shape; choosing
+  not to (or failing) is the player's managed risk. The boss doesn't scale down to your losses.
+- Boss = Hard difficulty + a spike multiplier, includeBoss:true (one strong monster anchors it),
+  in a single big ARENA room. Contrast: normal encounters scale to LIVING party (survivor-sized).
+- BUG that surfaced this: by depth 3 the party was 1 survivor, so the survivor-based budget made the
+  "boss" trivially small (75 XP, 1 goblin). Fix: boss uses full-party budget.

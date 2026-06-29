@@ -73,6 +73,42 @@ namespace DnDTactics.Procgen
             OnGenerated?.Invoke();
         }
 
+        // Generates a single large arena room (for boss fights) instead of a normal dungeon.
+        public void GenerateBossArena()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+                Destroy(transform.GetChild(i).gameObject);
+            tiles.Clear();
+
+            // Build a map with one big central room.
+            Map = new DungeonMap(width, height);
+
+            // Arena size: large, centered. Clamp to fit with a border.
+            int arenaW = Mathf.Min(width - 6, 18);
+            int arenaH = Mathf.Min(height - 6, 18);
+            int ax = (width - arenaW) / 2;
+            int ay = (height - arenaH) / 2;
+
+            for (int x = ax; x < ax + arenaW; x++)
+                for (int y = ay; y < ay + arenaH; y++)
+                    Map.Tiles[x, y] = TileType.Floor;
+
+            Map.Rooms.Add(new Room(ax, ay, arenaW, arenaH));
+
+            // Build the grid from the map (same as Generate()).
+            Grid = new TacticalGrid(width, height, cellSize);
+            for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
+                {
+                    var cell = Grid.GetCell(new GridCoord(x, y));
+                    if (cell != null) cell.walkable = Map.IsFloor(x, y);
+                }
+
+            RenderTiles();
+            Debug.Log($"Generated BOSS ARENA ({arenaW}x{arenaH} room).");
+            OnGenerated?.Invoke();
+        }
+
         void RenderTiles()
         {
             Shader lit = Shader.Find("Universal Render Pipeline/Lit");

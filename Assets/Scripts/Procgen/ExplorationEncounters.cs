@@ -67,6 +67,15 @@ namespace DnDTactics.Procgen
         public IEnumerable<string> MonsterNames =>
             monsterPool.Where(ms => ms != null).Select(ms => ms.monsterName);
 
+        // ALL deployed members' levels (including downed/dead) — for boss sizing (full strength).
+        int[] FullPartyLevels()
+        {
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null) return new int[0];
+            return slot.party.Members(slot.barracks)
+                       .Select(m => m.character.level).ToArray();
+        }
+
         // Party levels (for per-PC budget) and average level (for depth/rewards).
         int[] PartyLevels()
         {
@@ -157,11 +166,23 @@ namespace DnDTactics.Procgen
             grid = dungeon.Grid;
             var rooms = dungeon.Map.Rooms;
             // Skip room 0 (the party's start). Place encounters in subsequent rooms.
-            int placed = 0;
-            for (int i = 1; i < rooms.Count && placed < encounterCount; i++)
+            // Boss depth = ONE encounter in the arena; otherwise the usual count in later rooms.
+            if (IsBossDepth() && rooms.Count > 0)
             {
-                var c = new GridCoord(rooms[i].CenterX, rooms[i].CenterY);
-                if (grid.IsWalkable(c)) { markers.Add(new Marker { cell = c }); placed++; }
+                // Place the boss on the far side of the single arena room from the party's start corner.
+                var r = rooms[0];
+                var bossCell = new GridCoord(r.x + r.width - 2, r.y + r.height - 2);
+                if (!grid.IsWalkable(bossCell)) bossCell = new GridCoord(r.CenterX, r.CenterY);
+                markers.Add(new Marker { cell = bossCell });
+            }
+            else
+            {
+                int placed = 0;
+                for (int i = 1; i < rooms.Count && placed < encounterCount; i++)
+                {
+                    var c = new GridCoord(rooms[i].CenterX, rooms[i].CenterY);
+                    if (grid.IsWalkable(c)) { markers.Add(new Marker { cell = c }); placed++; }
+                }
             }
             Debug.Log($"Placed {markers.Count} encounter(s) in the dungeon.");
 
@@ -395,8 +416,12 @@ namespace DnDTactics.Procgen
             foreach (var b in braziers) if (b.token != null) Destroy(b.token);
             braziers.Clear();
 
-            // New dungeon. Generate() rebuilds tiles+grid and fires OnGenerated → PlaceMarkers re-runs.
-            dungeon.Generate();
+            // New dungeon. At boss depth, generate a single arena room; otherwise a normal dungeon.
+            // (RunDepth already incremented above, so IsBossDepth() reflects the dungeon we're entering.)
+            if (IsBossDepth())
+                dungeon.GenerateBossArena();
+            else
+                dungeon.Generate();
             grid = dungeon.Grid;
 
             // Re-place the party (carrying state) + reset fog.
@@ -466,14 +491,17 @@ namespace DnDTactics.Procgen
             }
             else if (monsterPool.Count > 0)
             {
-                var levels = PartyLevels();
-                var difficulty = DifficultyForDepth();
                 bool boss = IsBossDepth();
+                // Boss uses FULL party strength (not just survivors) + a spike; normal uses living party.
+                int[] levels = boss ? FullPartyLevels() : PartyLevels();
+                var difficulty = DifficultyForDepth(); // Hard at boss depth
                 int seed = System.Environment.TickCount + m.cell.x * 31 + m.cell.z * 17;
                 var built = EncounterBuilder.Build(levels, difficulty, monsterPool, seed, includeBoss: boss);
+
+                // Boss spike: if the built encounter is light, this is where a multiplier could bump it.
                 toSpawn.AddRange(built.monsters);
                 Debug.Log($"Encounter (depth {GameSession.Instance.RunDepth}, {difficulty}" +
-                          (boss ? ", BOSS" : "") + $"): {built.monsters.Count} monsters, " +
+                          (boss ? ", BOSS [full-party]" : "") + $"): {built.monsters.Count} monsters, " +
                           $"{built.totalXp}/{built.budget} XP.");
             }
 
