@@ -14,22 +14,31 @@ namespace DnDTactics.Procgen
     // Selects monsters to fill an XP budget. Pure logic over a provided monster pool.
     public static class EncounterBuilder
     {
+        // Build by computing the budget from party levels + difficulty.
         public static BuiltEncounter Build(
             int[] partyLevels, Difficulty difficulty,
             IReadOnlyList<MonsterStats> pool, int seed,
             bool includeBoss = false, int maxMonsters = 8)
         {
-            var result = new BuiltEncounter();
+            int budget = EncounterBudget.TotalBudget(partyLevels, difficulty);
+            return BuildToBudget(budget, pool, seed, includeBoss, maxMonsters);
+        }
+
+        // Build to an explicit XP budget (used for pre-split dungeon chunks).
+        public static BuiltEncounter BuildToBudget(
+            int budget, IReadOnlyList<MonsterStats> pool, int seed,
+            bool includeBoss = false, int maxMonsters = 8)
+        {
+            var result = new BuiltEncounter { budget = budget };
             if (pool == null || pool.Count == 0) return result;
 
-            result.budget = EncounterBudget.TotalBudget(partyLevels, difficulty);
-            int remaining = result.budget;
+            int remaining = budget;
             var rng = new System.Random(seed);
 
             // Optional boss: spend up to ~40% of budget on one strong monster.
             if (includeBoss)
             {
-                int bossCap = (int)(result.budget * 0.4f);
+                int bossCap = (int)(budget * 0.4f);
                 MonsterStats boss = BestUnder(pool, bossCap);
                 if (boss != null)
                 {

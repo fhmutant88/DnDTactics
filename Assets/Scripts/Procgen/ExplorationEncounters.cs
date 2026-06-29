@@ -56,7 +56,7 @@ namespace DnDTactics.Procgen
         private readonly List<Chest> chests = new();
 
         // An encounter waiting in a room.
-        class Marker { public GridCoord cell; public bool triggered; }
+        class Marker { public GridCoord cell; public bool triggered; public int xpBudget; }
         private readonly List<Marker> markers = new();
         private TacticalGrid grid;
         private bool inCombat = false;
@@ -177,14 +177,78 @@ namespace DnDTactics.Procgen
             }
             else
             {
+                // Compute one TOTAL dungeon combat budget, then split it into uneven chunks.
+                var levels = PartyLevels();
+                var difficulty = DifficultyForDepth();
+                int partyBudget = DnDTactics.Rules.EncounterBudget.TotalBudget(
+                    levels.Length > 0 ? levels : new[] { 1 }, difficulty);
+
+                // Dungeon multiplier: some dungeons are light, some are gauntlets (1.5x–3.5x).
+                float dungeonMult = Random.Range(1.5f, 3.5f);
+                int dungeonBudget = Mathf.RoundToInt(partyBudget * dungeonMult);
+
+                // Cheapest monster XP = the floor for a viable chunk / a single monster.
+                int cheapest = CheapestMonsterXp();
+                if (cheapest <= 0) cheapest = 25;
+
+                // How many chunks: scales loosely with budget, randomized, capped by rooms & budget.
+                int maxByRooms = Mathf.Max(1, rooms.Count - 1);       // rooms past the start
+                int maxByBudget = Mathf.Max(1, dungeonBudget / cheapest);
+                int softCap = Mathf.Clamp(dungeonBudget / Mathf.Max(1, partyBudget) + 1, 1, 8);
+                int chunkCount = Mathf.Min(Random.Range(1, softCap + 1), maxByRooms, maxByBudget);
+                chunkCount = Mathf.Max(1, chunkCount);                // always at least 1
+
+                // Split the dungeon budget into `chunkCount` uneven portions (each ≥ cheapest).
+                var chunks = SplitBudget(dungeonBudget, chunkCount, cheapest);
+
+                // Place each chunk in a room (rooms past the start).
                 int placed = 0;
-                for (int i = 1; i < rooms.Count && placed < encounterCount; i++)
+                for (int i = 1; i < rooms.Count && placed < chunks.Count; i++)
                 {
                     var c = new GridCoord(rooms[i].CenterX, rooms[i].CenterY);
-                    if (grid.IsWalkable(c)) { markers.Add(new Marker { cell = c }); placed++; }
+                    if (grid.IsWalkable(c))
+                    {
+                        markers.Add(new Marker { cell = c, xpBudget = chunks[placed] });
+                        placed++;
+                    }
                 }
+                Debug.Log($"Dungeon budget {dungeonBudget} (x{dungeonMult:0.0}) → {placed} encounter(s): " +
+                          string.Join(", ", chunks.GetRange(0, placed)));
             }
             Debug.Log($"Placed {markers.Count} encounter(s) in the dungeon.");
+
+            int CheapestMonsterXp()
+            {
+                int min = int.MaxValue;
+                foreach (var ms in monsterPool)
+                    if (ms != null)
+                    {
+                        int xp = ms.XpReward;
+                        if (xp > 0 && xp < min) min = xp;
+                    }
+                return min == int.MaxValue ? 0 : min;
+            }
+
+            // Split a total budget into `count` uneven portions, each at least `floor`.
+            List<int> SplitBudget(int total, int count, int floor)
+            {
+                var result = new List<int>();
+                if (count <= 1) { result.Add(total); return result; }
+
+                // Reserve the floor for each chunk, randomly distribute the remainder.
+                int reserved = floor * count;
+                int extra = Mathf.Max(0, total - reserved);
+
+                // Random weights for uneven distribution of the extra.
+                var weights = new float[count];
+                float wSum = 0f;
+                for (int i = 0; i < count; i++) { weights[i] = Random.Range(0.2f, 1f); wSum += weights[i]; }
+
+                for (int i = 0; i < count; i++)
+                    result.Add(floor + Mathf.RoundToInt(extra * (weights[i] / wSum)));
+
+                return result;
+            }
 
             // How many chests this dungeon gets. Guarantee a minimum (every dungeon has loot),
             // then scale loosely by room count. (PLACEHOLDER scaling — refine by difficulty/level later.)
@@ -336,6 +400,11 @@ namespace DnDTactics.Procgen
         void TrackRoomsAndCompletion()
         {
             if (dungeonComplete || dungeon == null || dungeon.Map == null) return;
+
+            // Don't complete a dungeon if the party is wiped — that's a TPK, not a victory.
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null) return;
+            if (slot.party.LivingMembers(slot.barracks).Count() <= 0) return;
 
             var rooms = dungeon.Map.Rooms;
 
@@ -492,17 +561,24 @@ namespace DnDTactics.Procgen
             else if (monsterPool.Count > 0)
             {
                 bool boss = IsBossDepth();
-                // Boss uses FULL party strength (not just survivors) + a spike; normal uses living party.
-                int[] levels = boss ? FullPartyLevels() : PartyLevels();
-                var difficulty = DifficultyForDepth(); // Hard at boss depth
                 int seed = System.Environment.TickCount + m.cell.x * 31 + m.cell.z * 17;
-                var built = EncounterBuilder.Build(levels, difficulty, monsterPool, seed, includeBoss: boss);
-
-                // Boss spike: if the built encounter is light, this is where a multiplier could bump it.
+                BuiltEncounter built;
+                if (boss)
+                {
+                    // Boss: full-party-strength Hard budget, one strong anchor.
+                    var levels = FullPartyLevels();
+                    built = EncounterBuilder.Build(levels, DnDTactics.Rules.Difficulty.Hard,
+                                                   monsterPool, seed, includeBoss: true);
+                }
+                else
+                {
+                    // Normal: this encounter's pre-split chunk budget.
+                    built = EncounterBuilder.BuildToBudget(m.xpBudget, monsterPool, seed);
+                }
                 toSpawn.AddRange(built.monsters);
-                Debug.Log($"Encounter (depth {GameSession.Instance.RunDepth}, {difficulty}" +
-                          (boss ? ", BOSS [full-party]" : "") + $"): {built.monsters.Count} monsters, " +
-                          $"{built.totalXp}/{built.budget} XP.");
+                Debug.Log($"Encounter (depth {GameSession.Instance.RunDepth}" +
+                          (boss ? ", BOSS [full-party]" : $", chunk {m.xpBudget}") +
+                          $"): {built.monsters.Count} monsters, {built.totalXp}/{built.budget} XP.");
             }
 
             var enemySpots = NearbyWalkable(m.cell, toSpawn.Count);

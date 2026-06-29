@@ -656,3 +656,18 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   in a single big ARENA room. Contrast: normal encounters scale to LIVING party (survivor-sized).
 - BUG that surfaced this: by depth 3 the party was 1 survivor, so the survivor-based budget made the
   "boss" trivially small (75 XP, 1 goblin). Fix: boss uses full-party budget.
+
+## Dungeon encounter distribution — budget-split model (decided, supersedes fixed count)
+- A dungeon has a TOTAL combat budget scaled by party level (per-PC sum) × difficulty × dungeon-size
+  factor. Higher level → much bigger total → naturally more/denser encounters (a L10 dungeon is a
+  sprawling gauntlet; a L1 dungeon is small). Variety/unpredictability is the point — NOT a fixed
+  "3, 3, boss" rhythm.
+- The total budget is split into a RANDOM number of encounters of VARIED (uneven) sizes: e.g. an
+  8-monster low-CR pack in one room, a solo monster elsewhere, a pair in another. Uneven budget
+  partitioning + the builder filling each chunk → the size variety.
+- Each chunk is budget-built from the monster pool (EncounterBuilder). XP math stays correct (chunks
+  sum to the dungeon budget). Completion still = all rooms visited + all placed encounters cleared.
+- DEFERRED refinement: monster PACK BEHAVIOR drives chunking — some monsters swarm (kobolds, rats →
+  big packs), others are solo (ogre, owlbear → solo bruiser), gnolls → small groups. Composition
+  reflects monster "social" nature, not just math. Wire when monsters have social/behavior traits.
+- Boss is separate (single full-party Hard encounter in the arena), unaffected by this split.
