@@ -493,13 +493,17 @@ namespace DnDTactics.Combat
             // Award XP from defeated enemies, divided among deployed members (downed included).
             if (defeatedEnemyXp > 0)
             {
-                var deployed = slot.party.LivingMembers(slot.barracks).ToList();
-                if (deployed.Count > 0)
+                // All party members earn XP, including those currently Down (per design).
+                // Only the truly Dead are excluded — their share is lost with them.
+                var earners = slot.party.Members(slot.barracks)
+                                  .Where(m => m.status != DnDTactics.Characters.MemberStatus.Dead)
+                                  .ToList();
+                if (earners.Count > 0)
                 {
-                    int share = Mathf.Max(1, defeatedEnemyXp / deployed.Count);
-                    foreach (var m in deployed)
+                    int share = Mathf.Max(1, defeatedEnemyXp / earners.Count);
+                    foreach (var m in earners)
                         m.character.AddXp(share);
-                    Debug.Log($"Awarded {share} XP each to {deployed.Count} members ({defeatedEnemyXp} total).");
+                    Debug.Log($"Awarded {share} XP each to {earners.Count} members ({defeatedEnemyXp} total).");
                 }
             }
 

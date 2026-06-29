@@ -16,14 +16,23 @@ namespace DnDTactics.Characters
 
             slot.party.longRestsTaken++;
             int now = slot.party.longRestsTaken;
-            int healed = 0, died = 0;
+            int healed = 0, died = 0, leveled = 0;
 
             foreach (var m in slot.barracks.members)
             {
                 m.character.TickLongRestRecovery(); // Raise Dead penalty recovers 1 per long rest
+
                 if (m.IsAlive)
                 {
-                    // Long rest restores HP to full for living members.
+                    // Apply any pending level-up (earned XP becomes actual levels on a long rest).
+                    if (m.character.LevelUpPending)
+                    {
+                        int gained = m.character.ApplyPendingLevelUp();
+                        if (gained > 0) leveled++;
+                    }
+
+                    // Long rest restores HP to full for living members (after leveling, so the
+                    // new max HP from leveling is included).
                     if (m.character.currentHP < m.character.MaxHP)
                     {
                         m.character.Heal(m.character.MaxHP - m.character.currentHP);
@@ -42,6 +51,7 @@ namespace DnDTactics.Characters
             }
 
             string msg = $"Long rest taken (total {now}). Healed {healed} member(s)." +
+                         (leveled > 0 ? $" {leveled} member(s) leveled up!" : "") +
                          (died > 0 ? $" {died} fallen member(s) passed beyond revival." : "");
             return new RestResult { tookRest = true, message = msg };
         }

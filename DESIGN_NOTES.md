@@ -562,3 +562,62 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
 - BUILD NOW: XP accrual from fights + pending-level-up state + `*` notification + apply-on-town-rest.
   IN-DUNGEON leveling comes with the deferred in-dungeon resting system.
 - Run structure (depth = level+2 etc.) reads party level, which now actually changes via this system.
+
+## XP awarding — DONE (accrual)
+- MonsterStats.XpReward = explicit xpValue or derived from CR (XpForCR table). Same number = defeat
+  reward AND encounter-budget cost (2024 model).
+- Combatant carries XpReward (set in SpawnMonster from stats.XpReward). CombatManager tallies
+  defeatedEnemyXp as enemies drop; on victory, divides among deployed (LivingMembers) → character.AddXp.
+- Character.AddXp now ONLY accrues currentXp (no instant level). QualifiedLevel/LevelUpPending/
+  ApplyPendingLevelUp added for deferred leveling. Confirmed: "Awarded N XP" after fights.
+- REMAINING for XP/leveling piece: (1) `*` pending-level-up notification on Roster cards;
+  (2) apply level-ups on the TOWN long rest (RestService). In-dungeon leveling deferred with rest cluster.
+
+## TODO (near-term)
+- Combat floor GRID overlay (tile boundaries) for movement readability — at least during combat.
+  Helps planning/testing. Self-contained visual task. (Requested during leveling testing.)
+- Replace placeholder Unicode UI glyphs (★ ⚠) with ASCII now (font lacks them); real icons in art pass.
+
+## Monster spawn placement (requested change)
+- Currently encounters spawn at ROOM CENTERS only. Want them able to spawn ANYWHERE walkable
+  (rooms AND corridors) for variety/ambushes. Change PlaceMarkers to pick from all walkable tiles.
+- Consideration: corridor fights are tactically different (cramped). Watch that it's interesting,
+  not annoying. May want a room/corridor mix rather than pure-random.
+
+## Movement & positioning rules (2024) — DEFERRED (major combat system)
+- BUG NOW: characters/enemies can currently move THROUGH enemies freely. Real rules below.
+- OCCUPANCY / "champagne cork": a 5-ft (1-tile) corridor is blocked by the front creature; others
+  can't pass through/around a HOSTILE creature's space (unless target is incapacitated, Tiny, or
+  2+ size categories different). Front-liner bottlenecks the hall.
+- MOVING THROUGH ENEMIES: not allowed unless 2+ size categories different; if allowed, the enemy's
+  space is Difficult Terrain (10 ft per 5 ft). Never END movement in an enemy's space.
+- MOVING THROUGH ALLIES: allowed, no speed penalty (2024 change). But cannot END turn in an ally's
+  space → forced PRONE if you do (unless occupier is Tiny or your size+). 
+- OPPORTUNITY ATTACKS: leaving an enemy's reach without Disengage provokes an OA (enemy reaction =
+  melee attack). Moving through an ally's square does NOT provoke. Needs a REACTION system.
+- DISENGAGE action: spend Action (Rogue: Bonus Action) to move without provoking OAs.
+- MELEE BOTTLENECK: only the front character can melee foes ahead, unless rear chars have REACH weapons.
+- RANGED-IN-MELEE: shooting while an enemy is adjacent → DISADVANTAGE on the ranged attack.
+  (NOTE: distinct from the vision unseen-target disadvantage — two separate rules.)
+- HELP action: a rear character grants ADVANTAGE to the front ally's next attack/check.
+- SHOVE / GRAPPLE (2024): can shove an enemy back/aside to open a corridor; forced movement via Shove
+  doesn't provoke OAs. Grapple to hold. 
+- PRONE condition: disadvantage on your attacks; melee attackers within 5 ft get advantage; ranged
+  attackers against you get disadvantage. (Need a conditions system.)
+- TUMBLE (optional DMG): Action/Bonus Action, Dex(Acrobatics) contest to move through (not end in) a
+  foe's space as Difficult Terrain.
+- SQUEEZING: a creature in a too-small space (or Large forced into 5-ft corridor) = Difficult Terrain.
+- DEPENDENCIES: needs (1) ACTION ECONOMY with named actions (Disengage/Shove/Grapple/Help), (2) a
+  REACTION system (opportunity attacks), (3) a CONDITIONS system (Prone, Grappled, Incapacitated),
+  (4) creature SIZE categories, (5) reach-weapon property, (6) movement-cost/difficult-terrain in
+  pathfinding. Build alongside the broader combat-depth + action-economy work.
+- MINIMAL FIRST STEP (cheap, high value): just BLOCK moving through occupied tiles (ally = pass-through-
+  but-not-stop; enemy = can't pass). Fixes the "move through enemies" bug without the full system.
+  Opportunity attacks / Disengage / Shove etc. come with the action-economy build.
+
+## TODO (near-term, testing/usability)
+- DEBUG SPAWN CONTROL: a debug panel (Exploration, toggle key) to force specific monster lineups for
+  encounters (pick types + counts, or normal random). For reproducible combat testing without random
+  ogre/bugbear stomps. Gate behind a debug flag; won't ship. (Building now.)
+- CAMERA CONTROL (near-term priority): currently fixed iso camera makes positioning in combat hard.
+  Need pan (WASD/edge/middle-drag), zoom (scroll), maybe rotate. Hurts testing + play. Build soon.

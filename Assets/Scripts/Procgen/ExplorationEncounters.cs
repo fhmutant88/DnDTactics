@@ -64,6 +64,9 @@ namespace DnDTactics.Procgen
         private readonly HashSet<int> visitedRooms = new();   // indices of rooms entered
         private bool dungeonComplete = false;
 
+        public IEnumerable<string> MonsterNames =>
+            monsterPool.Where(ms => ms != null).Select(ms => ms.monsterName);
+
         void Awake()
         {
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
@@ -417,14 +420,27 @@ namespace DnDTactics.Procgen
             for (int i = 0; i < party.Count && i < partySpots.Count; i++)
                 combat.SpawnPartyHero(party[i].character, partySpots[i], party[i].id);
 
-            // Spawn enemies in the encounter's room.
-            int enemyCount = Mathf.Clamp(monsterPool.Count > 0 ? Random.Range(2, 5) : 0, 0, 8);
-            var enemySpots = NearbyWalkable(m.cell, enemyCount);
-            for (int i = 0; i < enemyCount && i < enemySpots.Count; i++)
+            // Spawn enemies. DEBUG override forces a specific lineup; otherwise random.
+            var toSpawn = new List<MonsterStats>();
+            if (DnDTactics.Core.DebugSpawn.Enabled && DnDTactics.Core.DebugSpawn.ForcedMonsters.Count > 0)
             {
-                var stats = monsterPool[Random.Range(0, monsterPool.Count)];
-                combat.SpawnMonster(stats, enemySpots[i]);
+                foreach (var name in DnDTactics.Core.DebugSpawn.ForcedMonsters)
+                {
+                    var stats = monsterPool.FirstOrDefault(ms => ms.monsterName == name);
+                    if (stats != null) toSpawn.Add(stats);
+                    else Debug.LogWarning($"[DebugSpawn] Monster '{name}' not in monsterPool.");
+                }
             }
+            else if (monsterPool.Count > 0)
+            {
+                int enemyCount = Mathf.Clamp(Random.Range(2, 5), 0, 8);
+                for (int i = 0; i < enemyCount; i++)
+                    toSpawn.Add(monsterPool[Random.Range(0, monsterPool.Count)]);
+            }
+
+            var enemySpots = NearbyWalkable(m.cell, toSpawn.Count);
+            for (int i = 0; i < toSpawn.Count && i < enemySpots.Count; i++)
+                combat.SpawnMonster(toSpawn[i], enemySpots[i]);
 
             combat.encounterGoldBase = 100; // simple flat base for now; can budget later
             combat.StartExternalEncounter();

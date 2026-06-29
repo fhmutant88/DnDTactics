@@ -19,6 +19,9 @@ namespace DnDTactics.UI
 
         GameObject completionPanel;
 
+        GameObject debugPanel;
+        TMP_Text debugStatus;
+
         Canvas canvas;
         Button portalButton;
         TMP_Text portalLabel, infoText;
@@ -70,6 +73,17 @@ namespace DnDTactics.UI
 
             if (completionPanel != null && encounters != null)
                 completionPanel.SetActive(encounters.DungeonComplete);
+
+            if (Input.GetKeyDown(KeyCode.F1) && debugPanel != null)
+                debugPanel.SetActive(!debugPanel.activeSelf);
+
+            if (debugStatus != null)
+            {
+                if (DnDTactics.Core.DebugSpawn.Enabled && DnDTactics.Core.DebugSpawn.ForcedMonsters.Count > 0)
+                    debugStatus.text = "Forced: " + string.Join(", ", DnDTactics.Core.DebugSpawn.ForcedMonsters);
+                else
+                    debugStatus.text = "Random encounters";
+            }
         }
 
         int CountScrolls()
@@ -169,6 +183,77 @@ namespace DnDTactics.UI
                 () => { if (encounters != null) encounters.ChooseReturnToTown(); });
 
             completionPanel.SetActive(false);
+
+            BuildDebugPanel();
+        }
+
+        void BuildDebugPanel()
+        {
+            debugPanel = new GameObject("DebugPanel", typeof(RectTransform));
+            debugPanel.transform.SetParent(canvas.transform, false);
+            var bg = debugPanel.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.85f);
+            Anchor(debugPanel.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(-20, -100), new Vector2(280, 400));
+
+            var title = MakeText("DbgTitle", 20, TextAlignmentOptions.Center);
+            title.text = "DEBUG SPAWN (F1)";
+            title.transform.SetParent(debugPanel.transform, false);
+            var trt = title.rectTransform;
+            trt.anchorMin = new Vector2(0, 1); trt.anchorMax = new Vector2(1, 1);
+            trt.pivot = new Vector2(0.5f, 1); trt.anchoredPosition = new Vector2(0, -8);
+            trt.sizeDelta = new Vector2(0, 28);
+
+            debugStatus = MakeText("DbgStatus", 16, TextAlignmentOptions.Center);
+            debugStatus.transform.SetParent(debugPanel.transform, false);
+            var srt = debugStatus.rectTransform;
+            srt.anchorMin = new Vector2(0, 1); srt.anchorMax = new Vector2(1, 1);
+            srt.pivot = new Vector2(0.5f, 1); srt.anchoredPosition = new Vector2(0, -38);
+            srt.sizeDelta = new Vector2(0, 40);
+
+            float y = -84;
+            // One row per monster in the pool: "+ Name" adds one to the forced list.
+            if (encounters != null && encounters.MonsterNames != null)
+            {
+                foreach (var name in encounters.MonsterNames)
+                {
+                    string captured = name;
+                    MakeDebugButton($"+ {captured}", y, new Color(0.3f, 0.4f, 0.5f), () =>
+                    {
+                        DnDTactics.Core.DebugSpawn.ForcedMonsters.Add(captured);
+                        DnDTactics.Core.DebugSpawn.Enabled = true;
+                    });
+                    y -= 40;
+                }
+            }
+
+            MakeDebugButton("Clear list", y, new Color(0.5f, 0.4f, 0.2f), () =>
+            {
+                DnDTactics.Core.DebugSpawn.ForcedMonsters.Clear();
+            });
+            y -= 40;
+            MakeDebugButton("Random (off)", y, new Color(0.4f, 0.3f, 0.3f), () =>
+            {
+                DnDTactics.Core.DebugSpawn.Clear();
+            });
+
+            debugPanel.SetActive(false); // hidden until F1
+        }
+
+        void MakeDebugButton(string text, float y, Color color, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(text + "Btn", typeof(RectTransform));
+            go.transform.SetParent(debugPanel.transform, false);
+            go.AddComponent<Image>().color = color;
+            var btn = go.AddComponent<Button>();
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0.5f, 1);
+            rt.anchoredPosition = new Vector2(0, y); rt.sizeDelta = new Vector2(-20, 34);
+            btn.onClick.AddListener(onClick);
+            var label = MakeText("L", 16, TextAlignmentOptions.Center);
+            label.text = text;
+            label.transform.SetParent(go.transform, false);
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
         }
 
         void MakeChoiceButton(string text, Vector2 pos, Color color, UnityEngine.Events.UnityAction onClick)
