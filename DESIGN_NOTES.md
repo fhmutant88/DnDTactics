@@ -696,3 +696,18 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
 - Leveling still applies on the TOWN long rest (not auto-applied on boss return) — consistent with
   the D&D mechanic + existing system. (Later: a "Long rest to level up" disclaimer/nudge.)
 - Normal (non-boss) completion is unchanged (Go Deeper / Save / Town panel).
+
+## PROGRESSION MILESTONE — COMPLETE
+- Dungeon completion (all rooms + encounters) → choice (Town/Descend/Save), TPK no longer false-completes.
+- Descending: multi-dungeon runs, party state carries forward (no free heal), depth counter, fog/dungeon
+  regenerate cleanly (fog reset ordering fixed: ClearExplored before respawn, Recompute after).
+- XP & leveling: defeated-monster XP (by-CR) divided among deployed (downed included, dead excluded);
+  deferred level-up applied on TOWN long rest (heal to new max); "* LEVEL UP!" marker on Roster cards.
+- Leveled dungeons: encounters routed through XP-budget builder; per-dungeon total budget (party level ×
+  difficulty × random 1.5–3.5 mult) split into varied uneven chunks (1..N encounters) → unpredictable,
+  scales with level. Difficulty ramps Easy→Standard→Hard by depth.
+- Boss: at depth = avgLevel+2, single arena room, ONE full-party-strength Hard encounter (includeBoss).
+- Boss rewards + run end: big gold (avgLevel×500), level-everyone XP (each survivor ≥1 level's worth,
+  respecting class curves), stubbed post-L5 wondrous-item roll, forced return to town (no descend past boss).
+- Core loop COMPLETE: party → depth=level+2 run → escalating budgeted dungeons → boss → rewards → town
+  → level up → deeper. The systems are now a GAME.

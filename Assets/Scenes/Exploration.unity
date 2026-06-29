@@ -335,6 +335,25 @@ MonoBehaviour:
   - {fileID: 11400000, guid: cf69218554d2a594baebbcb8bde7984e, type: 2}
   - {fileID: 11400000, guid: d388e4247de83e143b62c7a87a4352c6, type: 2}
   - {fileID: 11400000, guid: 366a235a7868a3249b84168ca1444705, type: 2}
+  - {fileID: 11400000, guid: 2b31ce19d802f1b46b78eea6b3a96807, type: 2}
+  - {fileID: 11400000, guid: 2d6b4e5a14e0fc247be794f1b804e9c9, type: 2}
+  - {fileID: 11400000, guid: 8e09651c321ffca4b94a90e394613eba, type: 2}
+  - {fileID: 11400000, guid: a62cfde0d39e30f4a92e0ac8b05cb853, type: 2}
+  - {fileID: 11400000, guid: 197d0a00b9a29d646b9b944598970221, type: 2}
+  - {fileID: 11400000, guid: d6e4aac8641864e40889623f9c3c253d, type: 2}
+  - {fileID: 11400000, guid: 14f0b619c28ace542b40db9e4fd1ae9c, type: 2}
+  - {fileID: 11400000, guid: 2b2afd9fd65681149a934f4784fb8f91, type: 2}
+  - {fileID: 11400000, guid: 8c121f663c61bb544a85d462d60a1be2, type: 2}
+  - {fileID: 11400000, guid: 6306b95f95ee061498cd67ce0bb2bd6e, type: 2}
+  - {fileID: 11400000, guid: f8cd635743e65794aacb5cea96c00a16, type: 2}
+  - {fileID: 11400000, guid: 37e2cd709e513194793788e5820c2624, type: 2}
+  - {fileID: 11400000, guid: ef245d888b6f57e4d93420d35d843edb, type: 2}
+  - {fileID: 11400000, guid: 8885bcba1a13f2a4495cd5624b6d8411, type: 2}
+  - {fileID: 11400000, guid: 617c71c79a87d754d9877aba7552eb30, type: 2}
+  - {fileID: 11400000, guid: 3979270919640ed4d9f874757bfebd81, type: 2}
+  - {fileID: 11400000, guid: 0d14b01e5f1b044409fcb392eb8eafc8, type: 2}
+  - {fileID: 11400000, guid: bd866474ff0cd7a45b4854f69d7e1d33, type: 2}
+  - {fileID: 11400000, guid: 3f5224f80795a6b408cafff7af88e432, type: 2}
   encounterCount: 3
   triggerRadius: 2
   roomLightChance: 0.4
