@@ -329,6 +329,7 @@ MonoBehaviour:
   dungeon: {fileID: 1004758472}
   combat: {fileID: 2014721752}
   combatHUD: {fileID: 0}
+  fog: {fileID: 0}
   monsterPool:
   - {fileID: 11400000, guid: d07f75629a0d0644ab877f5c43337aa8, type: 2}
   - {fileID: 11400000, guid: cf69218554d2a594baebbcb8bde7984e, type: 2}
@@ -336,6 +337,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 366a235a7868a3249b84168ca1444705, type: 2}
   encounterCount: 3
   triggerRadius: 2
+  roomLightChance: 0.4
+  placedLightRadius: 5
   minChests: 1
   roomsPerChest: 3
 --- !u!4 &864831380
@@ -365,6 +368,7 @@ GameObject:
   - component: {fileID: 961739752}
   - component: {fileID: 961739751}
   - component: {fileID: 961739750}
+  - component: {fileID: 961739754}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -490,6 +494,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 30, y: 45, z: 0}
+--- !u!114 &961739754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 961739749}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45dbb13254e057b4ab068bc35d518744, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Core.CameraController
+  panSpeed: 18
+  edgeScroll: 1
+  edgeThicknessPx: 12
+  zoomSpeed: 8
+  minOrthoSize: 4
+  maxOrthoSize: 22
+  recenterKey: 102
+  recenterTarget: {fileID: 0}
 --- !u!1 &1004758471
 GameObject:
   m_ObjectHideFlags: 0
@@ -577,6 +601,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Procgen.FogOfWar
   dungeon: {fileID: 1004758472}
   exploration: {fileID: 116874429}
+  encounters: {fileID: 0}
 --- !u!4 &1268400413
 Transform:
   m_ObjectHideFlags: 0

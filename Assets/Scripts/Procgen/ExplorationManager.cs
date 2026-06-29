@@ -208,6 +208,8 @@ namespace DnDTactics.Procgen
                 selected.go.transform.localScale = selected.baseScale * 1.15f; // highlight new
             Debug.Log($"Selected: {SelectedName}");
             if (fog != null) fog.Recompute();
+            var camCtrl = FindFirstObjectByType<DnDTactics.Core.CameraController>();
+            if (camCtrl != null && selected != null) camCtrl.recenterTarget = selected.go.transform;
         }
 
         // Find the token whose GameObject was clicked (via the hit collider).
@@ -378,7 +380,10 @@ namespace DnDTactics.Procgen
                 foreach (var d in dirs)
                 {
                     var n = new GridCoord(cur.x + d.x, cur.z + d.z);
-                    if (!seen.Contains(n) && grid.InBounds(n)) { seen.Add(n); q.Enqueue(n); }
+                    if (!seen.Contains(n) && grid.InBounds(n) && grid.IsWalkable(n))
+                    {
+                        seen.Add(n); q.Enqueue(n);
+                    }
                 }
             }
             return result;

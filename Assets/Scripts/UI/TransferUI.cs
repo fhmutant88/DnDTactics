@@ -79,7 +79,7 @@ namespace DnDTactics.UI
             bool leader = Slot.party.leaderId == m.id;
             string statusTag = m.status == MemberStatus.Down ? "  [DOWN]"
                              : m.status == MemberStatus.Dead ? "  [DEAD]" : "";
-            var title = MakeChildText(card.transform, (leader ? "★ " : "") + m.character.characterName + statusTag,
+            var title = MakeChildText(card.transform, (leader ? "* " : "") + m.character.characterName + statusTag,
                                       22, TextAlignmentOptions.Center, FontStyles.Bold);
             Place(title.rectTransform, 0, 185, 270, 30);
 

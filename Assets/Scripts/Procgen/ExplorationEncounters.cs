@@ -531,7 +531,10 @@ namespace DnDTactics.Procgen
                 foreach (var d in dirs)
                 {
                     var n = new GridCoord(cur.x + d.x, cur.z + d.z);
-                    if (!seen.Contains(n) && grid.InBounds(n)) { seen.Add(n); q.Enqueue(n); }
+                    if (!seen.Contains(n) && grid.InBounds(n) && grid.IsWalkable(n))
+                    {
+                        seen.Add(n); q.Enqueue(n);
+                    }
                 }
             }
             return result;

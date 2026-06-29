@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 480ab670f93fba94685af78357ef1f7d, type: 3}
   m_Name: Torch
   m_EditorClassIdentifier: Assembly-CSharp::DnDTactics.Data.ItemDefinition
-  itemName: New Item
+  itemName: Torch
   description: 
   category: 0
-  goldValue: 10
+  goldValue: 1
   healAmount: 0
   isRevivalComponent: 0
