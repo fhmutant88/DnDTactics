@@ -17,6 +17,8 @@ namespace DnDTactics.UI
         public DnDTactics.Procgen.ExplorationManager exploration;
         TMP_Text selectedText;
 
+
+
         GameObject completionPanel;
 
         GameObject debugPanel;
@@ -72,7 +74,10 @@ namespace DnDTactics.UI
             }
 
             if (completionPanel != null && encounters != null)
-                completionPanel.SetActive(encounters.DungeonComplete);
+                completionPanel.SetActive(encounters.DungeonComplete && !encounters.IsBossComplete);
+
+            if (encounters != null && encounters.IsBossComplete && infoText != null)
+                infoText.text = "BOSS DEFEATED — RUN COMPLETE! Returning to town…";
 
             if (Input.GetKeyDown(KeyCode.F1) && debugPanel != null)
                 debugPanel.SetActive(!debugPanel.activeSelf);

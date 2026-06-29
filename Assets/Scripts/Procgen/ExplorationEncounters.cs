@@ -63,6 +63,7 @@ namespace DnDTactics.Procgen
         public bool InCombat => inCombat;
         private readonly HashSet<int> visitedRooms = new();   // indices of rooms entered
         private bool dungeonComplete = false;
+        public bool IsBossComplete => dungeonComplete && IsBossDepth();
 
         public IEnumerable<string> MonsterNames =>
             monsterPool.Where(ms => ms != null).Select(ms => ms.monsterName);
@@ -435,6 +436,13 @@ namespace DnDTactics.Procgen
         void CompleteDungeon()
         {
             dungeonComplete = true;
+
+            if (IsBossDepth())
+            {
+                CompleteBossRun();
+                return;
+            }
+
             Debug.Log("=== DUNGEON COMPLETE! ===");
 
             var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
@@ -452,6 +460,62 @@ namespace DnDTactics.Procgen
             }
 
             exploration.SetExploring(false); // freeze; the HUD offers Town / Descend / Save
+        }
+
+        void CompleteBossRun()
+        {
+            Debug.Log("=== BOSS DEFEATED! THE RUN IS COMPLETE! ===");
+
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot != null)
+            {
+                int avgLevel = AveragePartyLevel();
+
+                // 1) Big gold to the leader.
+                string leaderId = slot.party.EnsureLeader(slot.barracks);
+                var leader = leaderId != null ? slot.barracks.GetById(leaderId) : null;
+                int gold = avgLevel * 500;
+                if (leader != null)
+                {
+                    leader.gold += gold;
+                    Debug.Log($"Boss hoard: {leader.character.characterName} gains {gold} gold!");
+                }
+
+                // 2) "Level-everyone" XP: ensure each surviving member gains at least one level's
+                //    worth (grant enough to qualify for their NEXT level if not already pending).
+                foreach (var m in slot.party.LivingMembers(slot.barracks))
+                {
+                    var c = m.character;
+                    if (!c.LevelUpPending && c.level < DnDTactics.Rules.Progression.MaxLevel)
+                    {
+                        int nextLevelXp = DnDTactics.Rules.Progression.XpForLevel(c.level + 1);
+                        int needed = nextLevelXp - c.currentXp;
+                        if (needed > 0) c.AddXp(needed);
+                    }
+                }
+                Debug.Log("The run's experience ensures every survivor can level up (rest in town).");
+
+                // 3) Wondrous-item roll (after level 5), low %. STUB — real item table later.
+                if (avgLevel >= 5)
+                {
+                    if (Random.value < 0.15f) // 15% — tunable
+                        Debug.Log("[STUB] A wondrous item glints in the hoard! (item content TBD)");
+                    else
+                        Debug.Log("No wondrous items this time.");
+                }
+
+                GameSession.Instance.SaveActive();
+            }
+
+            // Forced return to town — the run is complete (can't go deeper past the boss).
+            exploration.SetExploring(false);
+            StartCoroutine(BossReturnToTown());
+        }
+
+        System.Collections.IEnumerator BossReturnToTown()
+        {
+            yield return new WaitForSeconds(3f); // a beat to register the victory
+            DnDTactics.Core.SceneFlow.Go(DnDTactics.Core.SceneFlow.Roster);
         }
 
         public void ChooseReturnToTown()
