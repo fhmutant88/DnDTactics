@@ -67,6 +67,38 @@ namespace DnDTactics.Procgen
         public IEnumerable<string> MonsterNames =>
             monsterPool.Where(ms => ms != null).Select(ms => ms.monsterName);
 
+        // Party levels (for per-PC budget) and average level (for depth/rewards).
+        int[] PartyLevels()
+        {
+            var slot = GameSession.Instance != null ? GameSession.Instance.ActiveSlot : null;
+            if (slot == null) return new int[0];
+            return slot.party.LivingMembers(slot.barracks)
+                       .Select(m => m.character.level).ToArray();
+        }
+
+        int AveragePartyLevel()
+        {
+            var levels = PartyLevels();
+            if (levels.Length == 0) return 1;
+            return Mathf.Max(1, Mathf.RoundToInt((float)levels.Sum() / levels.Length));
+        }
+
+        // Total dungeons in this run = average party level + 2 (last is the boss).
+        int RunLength() => AveragePartyLevel() + 2;
+
+        bool IsBossDepth() => GameSession.Instance.RunDepth >= RunLength();
+
+        // Difficulty ramps across the run: early = Easy, middle = Standard, boss = Hard.
+        DnDTactics.Rules.Difficulty DifficultyForDepth()
+        {
+            int depth = GameSession.Instance.RunDepth;
+            int total = RunLength();
+            if (depth >= total) return DnDTactics.Rules.Difficulty.Hard;   // boss
+            float frac = (float)depth / total;  // 0..1 through the run
+            if (frac <= 0.34f) return DnDTactics.Rules.Difficulty.Easy;
+            return DnDTactics.Rules.Difficulty.Standard;
+        }
+
         void Awake()
         {
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
@@ -420,7 +452,8 @@ namespace DnDTactics.Procgen
             for (int i = 0; i < party.Count && i < partySpots.Count; i++)
                 combat.SpawnPartyHero(party[i].character, partySpots[i], party[i].id);
 
-            // Spawn enemies. DEBUG override forces a specific lineup; otherwise random.
+            // Spawn enemies. DEBUG override forces a lineup; otherwise build to an XP budget that
+            // scales with party level + run depth (difficulty ramps toward the boss).
             var toSpawn = new List<MonsterStats>();
             if (DnDTactics.Core.DebugSpawn.Enabled && DnDTactics.Core.DebugSpawn.ForcedMonsters.Count > 0)
             {
@@ -433,9 +466,15 @@ namespace DnDTactics.Procgen
             }
             else if (monsterPool.Count > 0)
             {
-                int enemyCount = Mathf.Clamp(Random.Range(2, 5), 0, 8);
-                for (int i = 0; i < enemyCount; i++)
-                    toSpawn.Add(monsterPool[Random.Range(0, monsterPool.Count)]);
+                var levels = PartyLevels();
+                var difficulty = DifficultyForDepth();
+                bool boss = IsBossDepth();
+                int seed = System.Environment.TickCount + m.cell.x * 31 + m.cell.z * 17;
+                var built = EncounterBuilder.Build(levels, difficulty, monsterPool, seed, includeBoss: boss);
+                toSpawn.AddRange(built.monsters);
+                Debug.Log($"Encounter (depth {GameSession.Instance.RunDepth}, {difficulty}" +
+                          (boss ? ", BOSS" : "") + $"): {built.monsters.Count} monsters, " +
+                          $"{built.totalXp}/{built.budget} XP.");
             }
 
             var enemySpots = NearbyWalkable(m.cell, toSpawn.Count);

@@ -621,3 +621,18 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   ogre/bugbear stomps. Gate behind a debug flag; won't ship. (Building now.)
 - CAMERA CONTROL (near-term priority): currently fixed iso camera makes positioning in combat hard.
   Need pan (WASD/edge/middle-drag), zoom (scroll), maybe rotate. Hurts testing + play. Build soon.
+
+## Camera control — DONE
+- CameraController on the Exploration main camera: pan (WASD/arrows + screen-edge), zoom (scroll →
+  ortho size, clamped 4–22), recenter-on-selected (F). Keeps the fixed iso ANGLE (only translates +
+  zooms) so grid/click mapping is unaffected. Pan axes flattened from camera yaw (screen-aligned);
+  pan speed scales with zoom. recenterTarget auto-set by ExplorationManager.SelectToken.
+- DEFERRED: 90° snap-rotation (for occlusion / seeing around walls) — add later if needed.
+- Confirmed: pan/zoom/recenter work; clicking still targets correct tiles after moving the camera.
+
+## Mixed-level party handling (decided)
+- ENCOUNTER BUDGET (2024-correct): sum EACH character's individual per-level XP budget (a L1 + a L3
+  contribute their own budgets, added). Don't average for the budget — summing per-PC is the 2024 rule
+  and handles mixed levels precisely.
+- RUN DEPTH (= party level + 2) and BOSS GOLD (= level × 500): use AVERAGE party level (rounded),
+  since these need a single number. AveragePartyLevel helper (rounded, min 1).
