@@ -52,9 +52,24 @@ namespace DnDTactics.Procgen
 
         public void Generate()
         {
-            for (int i = transform.childCount - 1; i >= 0; i--)
-                Destroy(transform.GetChild(i).gameObject);
+            // Destroy all existing tile GameObjects immediately (deferred Destroy can leave ghosts
+            // when regenerating within a frame, e.g. on descend).
+            // Destroy tracked tiles.
+            foreach (var kv in tiles)
+                if (kv.Value != null && kv.Value.go != null)
+                    DestroyImmediate(kv.Value.go);
             tiles.Clear();
+            // Destroy any children of this transform.
+            for (int i = transform.childCount - 1; i >= 0; i--)
+                DestroyImmediate(transform.GetChild(i).gameObject);
+            // Sweep any ORPHANED tile objects anywhere in the scene (root-level ghosts).
+            foreach (var existing in GameObject.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                if (existing == null) continue;
+                string n = existing.gameObject.name;
+                if (n.StartsWith("Floor_") || n.StartsWith("Wall_"))
+                    DestroyImmediate(existing.gameObject);
+            }
 
             int useSeed = seed != 0 ? seed : System.Environment.TickCount;
             Map = DungeonGenerator.Generate(width, height, useSeed,
@@ -76,9 +91,24 @@ namespace DnDTactics.Procgen
         // Generates a single large arena room (for boss fights) instead of a normal dungeon.
         public void GenerateBossArena()
         {
-            for (int i = transform.childCount - 1; i >= 0; i--)
-                Destroy(transform.GetChild(i).gameObject);
+            // Destroy all existing tile GameObjects immediately (deferred Destroy can leave ghosts
+            // when regenerating within a frame, e.g. on descend).
+            // Destroy tracked tiles.
+            foreach (var kv in tiles)
+                if (kv.Value != null && kv.Value.go != null)
+                    DestroyImmediate(kv.Value.go);
             tiles.Clear();
+            // Destroy any children of this transform.
+            for (int i = transform.childCount - 1; i >= 0; i--)
+                DestroyImmediate(transform.GetChild(i).gameObject);
+            // Sweep any ORPHANED tile objects anywhere in the scene (root-level ghosts).
+            foreach (var existing in GameObject.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                if (existing == null) continue;
+                string n = existing.gameObject.name;
+                if (n.StartsWith("Floor_") || n.StartsWith("Wall_"))
+                    DestroyImmediate(existing.gameObject);
+            }
 
             // Build a map with one big central room.
             Map = new DungeonMap(width, height);

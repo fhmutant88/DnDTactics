@@ -671,3 +671,28 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   big packs), others are solo (ogre, owlbear → solo bruiser), gnolls → small groups. Composition
   reflects monster "social" nature, not just math. Wire when monsters have social/behavior traits.
 - Boss is separate (single full-party Hard encounter in the arena), unaffected by this split.
+
+## Monsters visible in exploration (motivated by playtest — still deferred, but wanted)
+- OBSERVED: a lit room (brazier) visible down a hallway shows the floor/brazier/chests, but NOT the
+  monsters — because monsters don't EXIST in exploration yet. Encounters are invisible MARKERS
+  (proximity triggers); monster tokens only spawn at trigger time → "ambush from an empty lit room."
+- DESIRED (the vision/lighting payoff): monsters are VISIBLE lurking tokens in the dungeon, shown by
+  the SAME rule as chests/braziers (lit + any-member LOS, OR selected char's darkvision). You spot them
+  from afar in lit/seen areas → decide to approach (trigger combat), avoid, or prepare.
+- Turns "ambush from nowhere" into scouting/threat-assessment — rewards the vision & light systems.
+- DESIGN DEPTH (why deferred to monster-vision/AI milestone): when do monsters notice/aggro the party?
+  do they patrol/move? can you avoid the fight entirely by not approaching? do they ambush from the
+  DARK (monster darkvision sees you first)? This is the monster-vision/ambush cluster.
+- MINIMAL near-term option: spawn monster tokens at encounter placement (visible, gated by the same
+  contents-visibility rule as chests), stationary, and trigger combat when the party gets close —
+  so you at least SEE them in lit/seen rooms before engaging. Full aggro/patrol/ambush comes later.
+
+## Boss rewards + run end (building now)
+- On BOSS dungeon completion: big gold (avg party level × 500) to leader; "level-everyone" XP =
+  ensure each surviving character gains AT LEAST one level's worth (grant enough XP to qualify for
+  their NEXT level if they haven't already leveled this run — respects different class XP curves,
+  no flattening to a uniform level); stub a post-L5 wondrous-item roll (low %, log only for now);
+  then FORCED return to town (no Go Deeper past the boss — run complete).
+- Leveling still applies on the TOWN long rest (not auto-applied on boss return) — consistent with
+  the D&D mechanic + existing system. (Later: a "Long rest to level up" disclaimer/nudge.)
+- Normal (non-boss) completion is unchanged (Go Deeper / Save / Town panel).

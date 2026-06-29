@@ -485,17 +485,16 @@ namespace DnDTactics.Procgen
             foreach (var b in braziers) if (b.token != null) Destroy(b.token);
             braziers.Clear();
 
-            // New dungeon. At boss depth, generate a single arena room; otherwise a normal dungeon.
-            // (RunDepth already incremented above, so IsBossDepth() reflects the dungeon we're entering.)
+            // New dungeon.
             if (IsBossDepth())
                 dungeon.GenerateBossArena();
             else
                 dungeon.Generate();
             grid = dungeon.Grid;
 
-            // Re-place the party (carrying state) + reset fog.
+            if (fog != null) fog.ClearExplored();        // clear BEFORE respawn (so respawn's recompute is clean)
             exploration.RespawnForNewDungeon();
-            if (fog != null) fog.ResetForNewDungeon();
+            if (fog != null) fog.ResetForNewDungeon();   // clear again + recompute against new positions
 
             exploration.SetExploring(true);
         }

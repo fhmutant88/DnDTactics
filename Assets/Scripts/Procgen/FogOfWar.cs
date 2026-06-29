@@ -21,6 +21,12 @@ namespace DnDTactics.Procgen
         private readonly HashSet<GridCoord> everExplored = new();  // permanent map knowledge
         private HashSet<GridCoord> currentlyVisible = new();
 
+        public void ClearExplored()
+        {
+            everExplored.Clear();
+            currentlyVisible.Clear();
+        }
+
         void Start()
         {
             if (dungeon == null) dungeon = FindFirstObjectByType<DungeonVisualizer>();
@@ -91,13 +97,21 @@ namespace DnDTactics.Procgen
                     bright.Contains(c) ? DungeonVisualizer.TileVisibility.Visible
                                        : DungeonVisualizer.TileVisibility.Explored);
             }
+
+            // (temp debug)
+            Debug.Log($"[Fog] Recompute: members={memberPositions.Count}, union={unionVisible.Count}, " +
+                      $"litAndSeen={litAndSeen.Count}, everExplored={everExplored.Count}");
+        
         }
 
         public void ResetForNewDungeon()
         {
             everExplored.Clear();
-            grid = dungeon.Grid;
+            currentlyVisible.Clear();
+            grid = dungeon != null ? dungeon.Grid : null;
+            Debug.Log($"[Fog] Reset: everExplored cleared (now {everExplored.Count}). Grid={(grid != null)}");
             Recompute();
+            Debug.Log($"[Fog] After reset Recompute: everExplored={everExplored.Count} tiles revealed.");
         }
     }
 }
