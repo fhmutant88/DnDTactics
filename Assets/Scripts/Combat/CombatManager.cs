@@ -448,14 +448,14 @@ namespace DnDTactics.Combat
             string rollTag = res.rollMode == RollMode.Flat ? "" : $" [{ctx.DescribeNet()}; kept {res.attackRoll}, dropped {res.otherRoll}]";
             if (res.critMiss) { Debug.Log($"{atkName} attacks {defName}: natural 1 — miss!{rollTag}"); }
             else if (!res.hit)
-            { Debug.Log($"{atkName} attacks {defName}: {res.attackTotal} vs AC {res.targetAC} — miss."); }
+            { Debug.Log($"{atkName} attacks {defName}: {res.attackTotal} vs AC {res.targetAC} — miss.{rollTag}"); }
             else
             {
                 target.Character.TakeDamage(res.damage);
                 string critTag = res.crit ? " CRIT!" : "";
                 Debug.Log($"{atkName} hits {defName}{critTag} for {res.damage} " +
                           $"({(res.crit ? "nat 20" : res.attackTotal + " vs AC " + res.targetAC)}). " +
-                          $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}");
+                          $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}{rollTag}");
 
                 if (target.Character.IsDown) DropCombatant(target);
             }
