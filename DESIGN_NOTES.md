@@ -951,3 +951,67 @@ LIKELY
 - These conventions live in the conversation by default and DON'T survive a history clear — so they're
   recorded HERE. If a session starts fresh from Design_Notes, re-read this block.
   
+  ## BESTIARY — locked scope (content; defer authoring, build systems first)
+Level cap = 10 (players). Monsters chosen by CR/XP-budget, not "level" (term used loosely for grouping).
+The list is the POOL to draw from; the XP-budget builder decides encounters. Authoring deferred — monsters
+are content that FILLS systems; build the systems first, add each monster (and its signature) when its
+dependency lands.
+
+KEPT — the bestiary spine:
+- Clean stat-block bruisers (no new system; usable the moment they're authored): Rat, Centipede, Spider,
+  Giant Fire Beetle, Stirge, Kobold, Goblin, Bugbear, Ogre, Hobgoblin, Orc, Thug, Gnoll, Owlbear, Minotaur,
+  Troll (regen later), Stone Giant, Golems (reskin gracefully), Shield Guardian, Wight, Mummy, Boneclaw,
+  Skeleton (+Champion/Minotaur Skeleton), Zombie, Barlgura, Manticore.
+- Swarms: Swarm of Bats, Swarm of Rats (may need a light swarm rule later; fine as grouped HP for now).
+- CONDITION-carriers (ride the phase-3 conditions work): Ghoul (paralysis — natural NEXT condition after
+  Prone), Cockatrice + Basilisk (petrification), Mind Flayer (stun cone — also needs saves), Grell (paralysis).
+- DARKNESS-carriers (ride vision + future magical-darkness): Darkmantle (first carrier of magical darkness —
+  the mechanic already wanted in notes), Cloaker, Shadow.
+- INCORPOREAL undead (SAVED via the AI-relocation trick, NOT full flight): Ghost, Wraith. Model "moves through
+  a wall" as a DISCRETE AI MOVEMENT BEHAVIOR — pick/validate a far-side cell, move the token, track position.
+  No continuous 3D traversal. On-theme (sinks into wall, reappears behind backline). Lives on monster-AI layer.
+- TYPED-EFFECTS / SAVES monsters (ride "combat-depth part 2" = saves+AoE, shared w/ traps): Dragons
+  (Young Black/White, CR7, breath = a save effect — same system as trap effects), Banshee (wail), Vrock/Hezrou
+  (spore/stench AURAS — recurring aura sub-system), Barbed Devil, Chain Devil, Glabrezu, Imp, Dretch, Flameskull.
+- SETTING-hooked: Mimic (ties into chest/exploration system, already half-designed), Rust Monster (needs
+  equipment system), Gelatinous Cube + Otyugh (engulf/grapple — ride deferred grapple), Displacer Beast
+  (displacement = permanent disadvantage source, cheap), Phase Spider + Grick (phasing/reach — positioning),
+  Drow, Stirge.
+
+TAGGED "signature-or-cut" (build the signature eventually or they're redundant reskins — decide deliberately):
+  Intellect Devourer, Gibbering Mouther, Grell, Nothic (4 interchangeable medium aberrations without their
+  signatures), Flameskull. Not cut now; revisit when their dependency systems exist.
+
+CUT (cost the most, add the least GIVEN our constraints; duplicate a role we already fill):
+- Aboleth — domination/disease/lair-water, none of which we model; stripped = generic CR10 tentacle brute we
+  already have. (Campaign set-piece, not dungeon horror.)
+- Beholder/Beholderkin — real Beholder CR13 (above cap) + pure eye-ray-saves delivery system; unbuildable as
+  itself until saves exist, absurd as a stat-block.
+- Hydra — bespoke sever/regrow-head logic nothing reuses; otherwise a Troll/Stone-Giant-equivalent multi-attacker.
+- Chuul — grapple-dependent + generic crab-brute; better grapple candidates exist.
+- ELEMENTALS trimmed to EARTH + FIRE (grounded bruisers). Air (sustained flight, not covered by the relocate
+  trick) and Water (wants water) cut.
+
+BOSS DESIGN — BROADENED (supersedes "boss = one hard monster"): a boss encounter can be (a) one anchor + minions,
+(b) a moderate threat with adds, or (c) a themed lair (e.g. kobold warren full of traps). The XP-budget builder
+already supports this — a boss is just a budget chunk with an anchor monster + fodder. BIG payoff: largely
+DISSOLVES the legendary-action problem — monsters don't need to act 4x/round if the encounter has 4 monsters.
+High-CR monsters (Glabrezu, Stone Golem, dragons) anchor minion-supported fights instead of soloing with
+legendary actions we don't model.
+
+DEPENDENCY → WHEN TO AUTHOR EACH GROUP:
+- Now-ish (need nothing new): clean bruisers + swarms.
+- With conditions (phase 3, in progress): Ghoul, Cockatrice, Basilisk, paralysis/petrify carriers.
+- With magical darkness: Darkmantle, Cloaker.
+- With monster-AI/vision milestone: incorporeal relocation (Ghost/Wraith), ambush behaviors.
+- With grapple/positioning cluster: Cube, Otyugh, Chuul-likes, Phase Spider, Displacer Beast.
+- With typed-effects/saves ("combat-depth part 2", shared w/ traps): dragons, devils/demons, auras, Mind Flayer.
+- With equipment system: Rust Monster.
+- Files touched: (none — bestiary scoping/content decision.)
+
+## No multiclassing (DECIDED — scope cut)
+Single-class only. Multiclassing = heavy system (prereqs, multiclass spell-slot table, proficiency
+interleaving, feature-interaction combinatorics) for depth that serves build-optimizers, not survival
+horror — runs counter to the genre (power-gamer mastery tool vs. our stretched-thin design). Keeps
+level-up flow / XP curves / level-10 cap clean. Files touched: (none — scoping decision.)
+
