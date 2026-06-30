@@ -155,6 +155,8 @@ namespace DnDTactics.Combat
             if (Input.GetMouseButtonDown(0) && !PointerOverUI()) HandleClick();
             if (playerTurn && Input.GetMouseButtonDown(1) && !PointerOverUI()) HandleAttackClick();
             if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();
+            if (playerTurn && Input.GetKeyDown(KeyCode.D)) RequestDash();
+            if (Input.GetKeyDown(KeyCode.P)) DebugToggleProne();
         }
 
         // True when the mouse is over a UI element, so game clicks don't bleed through it.
@@ -241,6 +243,44 @@ namespace DnDTactics.Combat
             if (IsPlayerTurn) EndTurn();
         }
 
+        // Dash: spend your action to gain extra movement equal to your Speed (5e).
+        // First "named action" — proves the action→resource routing the menu will reuse.
+        public void RequestDash()
+        {
+            if (!IsPlayerTurn) return;
+            var active = turnOrder.Current?.combatant;
+            if (active == null) return;
+            if (!resources.TrySpendAction()) { Debug.Log("No action left to Dash."); return; }
+
+            int speed = active.Character.Speed;
+            resources.MovementRemaining += speed;
+            Debug.Log($"{active.Character.characterName} Dashes (+{speed} ft). " +
+                      $"Movement: {resources.MovementRemaining} ft.");
+            RefreshMovementRange();
+        }
+
+        // DEBUG: toggle Prone on the selected combatant, to exercise the conditions→attack
+        // hooks until a real applier (Shove / drop-prone action) exists. Remove when those land.
+        void DebugToggleProne()
+        {
+            if (selected == null) { Debug.Log("No combatant selected to toggle Prone."); return; }
+            if (selected.HasCondition(ConditionType.Prone))
+            {
+                selected.RemoveCondition(ConditionType.Prone);
+                Debug.Log($"{selected.Character.characterName} is no longer Prone.");
+            }
+            else
+            {
+                selected.AddCondition(ConditionType.Prone);
+                Debug.Log($"{selected.Character.characterName} is now Prone.");
+            }
+        }
+
+        // Additive HUD reads for the new resources.
+        public bool ActiveBonusActionAvailable => resources != null && resources.BonusActionAvailable;
+        public bool ActiveFreeInteractionAvailable => resources != null && resources.FreeInteractionAvailable;
+        public bool ActiveReactionAvailable => ActiveCombatant != null && ActiveCombatant.ReactionAvailable;
+
         void LogInitiative()
         {
             Debug.Log("=== Initiative Order ===");
@@ -266,6 +306,8 @@ namespace DnDTactics.Combat
             selected = entry.combatant;
 
             resources.ResetForTurn(entry.combatant.Character.Speed);
+            entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
+            entry.combatant.TickConditions();     // durationed conditions count down (Prone is permanent)
             RefreshMovementRange();
 
             Debug.Log($"--- Round {turnOrder.Round}: {entry.combatant.Character.characterName}'s turn " +
@@ -386,14 +428,25 @@ namespace DnDTactics.Combat
 
             if (attacker.Weapon == null) { Debug.Log("No weapon equipped."); return; }
 
-            AttackResult res = AttackResolver.Resolve(
-                attacker.Character, target.Character, attacker.Weapon);
-            resources.ActionAvailable = false; // attacking is your action
+            /// Commit the action only now that the attack is valid (target/range/weapon all OK) —
+            // never spend your action on an illegal attack. The early guards above already
+            // confirmed an action was available.
+            resources.TrySpendAction();
 
+            // Collect advantage/disadvantage sources for this attack. Each source is added with
+            // a reason for the log; AttackContext resolves the 5e cancellation rule. Future sources
+            // (unseen target, prone, Help, attack-from-darkness) plug in here as more Add* calls.
+            var ctx = new AttackContext();
+            AddAttackModifiers(ctx, attacker, target, distFeet);
+
+            AttackResult res = AttackResolver.Resolve(
+                attacker.Character, target.Character, attacker.Weapon, ctx);
+            
             string atkName = attacker.Character.characterName;
             string defName = target.Character.characterName;
 
-            if (res.critMiss) { Debug.Log($"{atkName} attacks {defName}: natural 1 — miss!"); }
+            string rollTag = res.rollMode == RollMode.Flat ? "" : $" [{ctx.DescribeNet()}; kept {res.attackRoll}, dropped {res.otherRoll}]";
+            if (res.critMiss) { Debug.Log($"{atkName} attacks {defName}: natural 1 — miss!{rollTag}"); }
             else if (!res.hit)
             { Debug.Log($"{atkName} attacks {defName}: {res.attackTotal} vs AC {res.targetAC} — miss."); }
             else
@@ -408,6 +461,74 @@ namespace DnDTactics.Combat
             }
 
              RefreshMovementRange();
+        }
+
+        // Gathers the advantage/disadvantage sources that apply to one attack. The ONLY place
+        // game state decides adv/disadv; AttackResolver stays pure rules. Grows as combat depth
+        // lands — each new rule is one Add* line here, never a resolver change.
+        void AddAttackModifiers(AttackContext ctx, Combatant attacker, Combatant target, int distFeet)
+        {
+            // RULE 1 — ranged-in-melee (vision-independent): firing a RANGED weapon while any
+            // hostile is within 5 ft = disadvantage. ("Don't shoot a bow in someone's face.")
+            bool ranged = attacker.Weapon != null && attacker.Weapon.rangeFeet > 5;
+            
+            if (ranged && EnemyWithinReach(attacker, 5))
+                ctx.AddDisadvantage("ranged with enemy adjacent");
+
+            /// RULE 2 — unseen target / attacking from darkness (vision-driven).
+            if (!CanSee(attacker, target))
+                ctx.AddDisadvantage("target unseen");
+            if (!CanSee(target, attacker))
+                ctx.AddAdvantage("attacker unseen");
+
+            // CONDITIONS — Prone (phase 3, first conditions instance).
+            // Prone attacker: disadvantage on all its attacks.
+            if (attacker.HasCondition(ConditionType.Prone))
+                ctx.AddDisadvantage("attacker prone");
+            // Prone target: melee attackers get advantage, ranged get disadvantage.
+            if (target.HasCondition(ConditionType.Prone))
+            {
+                if (ranged) ctx.AddDisadvantage("target prone (ranged)");
+                else ctx.AddAdvantage("target prone (melee)");
+            }
+        }
+
+        // True if any hostile (relative to 'self') sits within 'feet' of self. Used for
+        // ranged-in-melee; reused later by reaction/positioning rules.
+        bool EnemyWithinReach(Combatant self, int feet)
+        {
+            foreach (var c in combatants)
+            {
+                if (c == null || c.Team == self.Team) continue;
+                if (self.Coord.DistanceInFeet(c.Coord) <= feet) return true;
+            }
+            return false;
+        }
+
+        // Can viewer see subject's tile right now? Darkvision + LOS (Vision rules class).
+        // LIGHTING SEAM: darkvision/baseline radius only — lit-tile data isn't available in
+        // combat yet, so a lit target in the dark still reads as unseen. Deferred.
+        bool CanSee(Combatant viewer, Combatant subject)
+        {
+            if (viewer == null || subject == null || grid == null) return true; // fail open
+            int radius = DnDTactics.Rules.Vision.SightRadiusTiles(ViewerDarkvisionFeet(viewer));
+            if (!DnDTactics.Rules.Vision.HasLineOfSight(viewer.Coord, subject.Coord, grid))
+                return false;
+            return ChebyshevTiles(viewer.Coord, subject.Coord) <= radius;
+        }
+
+        // Darkvision range (feet) from the combatant's species.
+        int ViewerDarkvisionFeet(Combatant c)
+        {
+            var species = c.Character != null ? c.Character.species : null;
+            return species != null ? species.darkvisionRange : 0;
+        }
+
+        int ChebyshevTiles(GridCoord a, GridCoord b)
+        {
+            int dx = a.x - b.x; if (dx < 0) dx = -dx;
+            int dz = a.z - b.z; if (dz < 0) dz = -dz;
+            return dx > dz ? dx : dz;
         }
 
         void DropCombatant(Combatant c)

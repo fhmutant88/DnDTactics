@@ -711,3 +711,232 @@ Vision/darkvision/lighting applies in COMBAT, not just exploration. Maps to 5e u
   respecting class curves), stubbed post-L5 wondrous-item roll, forced return to town (no descend past boss).
 - Core loop COMPLETE: party → depth=level+2 run → escalating budgeted dungeons → boss → rewards → town
   → level up → deeper. The systems are now a GAME.
+  
+  ## Combat depth — Phase 1: action economy foundation (DONE)
+First slice of the combat-depth cluster. Formalizes the per-turn resource budget so all later
+named actions (Dash/Dodge/Disengage/Shove/Help) and reactions (opportunity attacks) route through
+ONE economy instead of ad-hoc boolean pokes.
+- TurnResources = the ACTIVE creature's own-turn budget: movement, action, bonus action, free
+  object interaction. Spend via TrySpendAction / TrySpendBonusAction / TrySpendFreeInteraction
+  (+ existing movement spend). Reset each BeginTurn.
+- KEY ARCHITECTURE: REACTION moved OFF TurnResources ONTO Combatant. A reaction is spent on OTHER
+  creatures' turns, so it can't live in the active creature's shared budget. Combatant.ReactionAvailable,
+  reset at the start of the combatant's OWN turn (BeginTurn); spend via Combatant.TrySpendReaction().
+  This is the hook opportunity attacks will consume.
+- Attack commits its action via resources.TrySpendAction() at the moment of resolve (only after
+  target/range/weapon validated — no spending the action on an illegal attack).
+- DASH = first named action (proof the action→resource routing works): spends the action, adds Speed
+  ft to MovementRemaining. Bound to 'D' on a player turn for now (HUD button in the art/UI pass).
+- HUD reads added: ActiveBonusActionAvailable, ActiveFreeInteractionAvailable, ActiveReactionAvailable.
+- Files touched: TurnResources.cs (rewritten), Combatant.cs (reaction state added),
+  CombatManager.cs (reset reaction in BeginTurn; reroute attack spend; RequestDash/Dash; HUD reads).
+- DEFERRED to later phases: adv/disadvantage modifier-collection in AttackResolver (phase 2); conditions
+  list on Combatant (phase 3); reaction system + opportunity attacks + Disengage, needing step-wise
+  movement/path (phase 4); death saves (phase 5); named-action menu Dodge/Disengage/Shove/Grapple/Help
+  (phase 6). Spellcasting + typed AoE/saves = combat-depth part 2.
+  
+  ## Combat↔exploration position handoff + fog (DEFERRED — surfaced during Dash testing)
+ROOT CAUSE: combat and the fog/vision system don't communicate. Combat (CombatManager.TryMoveTo)
+updates occupancy + token transform but never calls FogOfWar.Recompute — combat runs the grid as a
+flat tactical plane (correct per "all combatants visible in combat"), while fog is an exploration concept.
+TWO CONSEQUENCES, same cause:
+- VISUAL: dashing/moving in combat lands you on tiles still rendered fogged (Unseen/Explored) — combat
+  doesn't reveal fog as you move.
+- CONSEQUENTIAL: IF combat end-position writes back to exploration, the return-side fog recompute can
+  reveal new chests/braziers/monsters/encounter markers (per the Layer-2 contents-visibility rule) that
+  weren't visible when the fight began — potentially even triggering new encounters.
+OPEN — does combat end-position currently write back to exploration at all? Unknown from combat files;
+  depends on the exploration↔combat bridge (NOT yet reviewed).
+DESIGN FORK (pick when built):
+- A: combat tactical-only — return at pre-combat positions (no surprise reveals; simple).
+- B: combat position carries back + fog recompute on return (emergent "fought deeper"; needs a recompute
+  + possible trigger check on the combat→exploration handoff).
+FILES WHEN BUILT: the exploration manager + return-from-combat bridge (unreviewed), FogOfWar, CombatManager
+  (end-position export). NOT part of the combat-depth spine.
+  
+  ## Live fog + fight-widening in combat (DEFERRED — direction LOCKED: Option B+)
+Decided during Dash testing. Combat is NOT a sealed tactical plane — fog/LOS/lighting stay LIVE during
+a fight, and moving can WIDEN the current battle. Core to the game's danger/over-extension design:
+run from a fight or stray too far and you can reveal — and pull in — more monsters.
+THREE consequences (all from the same root: combat currently never recomputes fog/vision):
+- VISUAL: moving in combat reveals fog as you go (lighting + LOS + darkvision — systems already built),
+  instead of leaving traversed tiles fogged.
+- HANDOFF: combat END-position carries back to exploration (Option B); return-side reveal opens new
+  map/contents for what's next.
+- ESCALATION (the danger lever): a monster newly brought into view during combat movement can be
+  inserted into the ACTIVE initiative — the fight grows around an over-extending party. "Stray too far,
+  open a bigger battle."
+DEPENDS ON (three deferred systems converging — this is combat-depth PART 2+, not the martial spine):
+- Live fog/vision recompute INSIDE combat (CombatManager.TryMoveTo → FogOfWar.Recompute; today it never does).
+- Monster-vision + lurking monster tokens in the dungeon (deferred monster-vision/ambush milestone).
+- DYNAMIC INITIATIVE INSERTION — same machinery as the deferred "staggered-join" note (units joining an
+  in-progress encounter, inserted into initiative on arrival). Current combat rolls initiative ONCE for a
+  fixed roster; this is the piece that lets the roster grow mid-fight.
+OPEN — JOIN TRIGGER: does a lurking monster join when the PARTY sees it, or when IT sees the party?
+  Vision is asymmetric (darkvision monster in dark sees unlit party first → ambush). "Monster sees you
+  first" is the scarier, on-theme option (over-extend → something you couldn't see joins from the dark);
+  lean that way, but needs monster-vision to exist first. Resolve when built.
+FILES WHEN BUILT: FogOfWar, CombatManager (live recompute + end-position export + dynamic insert),
+  TurnOrder (mid-fight initiative insertion), exploration↔combat bridge (unreviewed), monster-vision system.
+  
+  ## Live fog + fight-widening — JOIN TRIGGER refinement (behavior-driven, not a fixed rule)
+Resolves the open join-trigger question from the note above: it's TWO steps, not one.
+- STEP 1 — DETECTION (vision/LOS gate): does anyone see anyone, asymmetrically (who sees whom first).
+  Settled — this is the vision system. Mutual or one-sided sighting just OPENS the question.
+- STEP 2 — REACTION (per-monster BEHAVIOR, not a combat rule): given detection, what the monster DOES
+  is keyed to its nature — the typed monster-behavior/intelligence system (deferred monster-vision/AI
+  milestone). Same detection event → opposite outcomes by monster type.
+MONSTER-REACTION ARCHETYPES (at least three):
+- ATTACK (e.g. zombie — mindless, aggressive, no self-preservation): engages the strayed character now.
+  OPEN: separate SIDE initiative (isolated solo duel — you wandered off, now you're alone with it) vs.
+  INSERT into the existing initiative (one unified fight, wider roster). Likely depends on party proximity.
+  Resolve at AI-milestone time.
+- RETREAT-AND-FETCH (e.g. lone kobold — intelligent, social, self-preserving): does NOT widen this fight;
+  LEAVES and escalates a FUTURE encounter (runs to its clan). Slow-burn off-screen threat — scarier in a
+  different register: something saw you, left, and you don't know what it's bringing back. Ties into the
+  patrol/wandering-monster + pack-behavior notes (retreat ≈ activating/spawning a future encounter).
+- IGNORE/OBLIVIOUS (e.g. slime/passive per existing AI notes): detection → no reaction.
+=> The join mechanic is another CONSUMER of the typed monster-AI system, not its own rule. Flesh out the
+  attack-form (side vs. insert) and retreat-to-encounter wiring when monster-AI/vision is built.
+  
+## Monster AI = "DM-like" via BOUNDED ROSTER + authored behavior traits (direction LOCKED)
+VISION: the AI should feel like a DM running the game — situational, reactive, monster-appropriate
+(kobold retreats to clan; zombie attacks; slime ignores). FEASIBILITY: yes, BECAUSE of tight scope —
+NOT a general creature-reasoner (unbounded trap), but a BOUNDED roster of hand-authored monsters whose
+typed BEHAVIOR TRAITS the DM-layer reads + combines per situation. Same pattern as conditions (typed list),
+encounter budget (typed pool): a typed data layer + a system that reads the types. Intelligence is in the
+AUTHORING + situational selection, not a general reasoner.
+SETTING AS SCOPE FILTER: dungeon-crawl setting legitimately excludes most of the 5e bestiary (no forest
+dragons, ocean aberrations, political devils). Coherent dungeon ecology: undead, oozes, kobolds/goblinoids,
+spiders/vermin, constructs, occasional aberration, boss tier. Exclusion = design discipline (less behavior
+to author, roster stays comprehensible). Target ~12–15 well-authored monsters.
+ARCHITECTURE WARNING (act on this DURING roster authoring, before the AI milestone):
+- Add a BEHAVIOR-TRAIT dimension to MonsterStats (today stats-only: CR/XP/attacks/AC/HP). Axes likely
+  include aggression, intelligence, self-preservation, social/pack tendency, preferred tactic — TBD.
+- Decide each monster's behavior axis AS you author it, even though nothing reads it yet. Cheap now;
+  expensive to retrofit 15 assets later. (Same lesson as reaction-flag placement: data where its
+  lifecycle belongs, ahead of the consumer.)
+- DO NOT design the full trait schema yet — downstream of conditions + vision; designing cold = guessing.
+  Capture the decision; schema comes with the monster-vision/AI milestone.
+CONSUMERS of this trait system (already noted): join-trigger reaction archetypes (attack/retreat/ignore),
+patrol/wandering monsters, pack-behavior encounter chunking, ambush-from-dark.
+
+## Combat depth — Phase 2: advantage/disadvantage modifier-collection (DONE)
+The connective tissue of the cluster: ONE place that decides adv/disadvantage, so every source
+(vision, conditions, positioning, Help) is an add-a-source call, never a resolver change.
+- AttackContext (new): collects advantage/disadvantage SOURCES, each with a reason string for the log.
+  Resolves the 5e CANCELLATION rule — any adv + any dis = flat, regardless of counts (not a counter, two
+  flags). NetRollMode → Flat/Advantage/Disadvantage; DescribeNet() for the log.
+- AttackResolver.Resolve gains an optional AttackContext param (null = flat → all existing callers still
+  compile). The single Dice.Roll(20) becomes mode-aware: flat = one die; adv = roll 2 keep higher; dis =
+  roll 2 keep lower. AttackResult gains rollMode + otherRoll (the dropped die) for transparent logging.
+- SOURCE DECISIONS live in CombatManager.AddAttackModifiers (NOT the resolver) — game state decides
+  adv/disadv, resolver stays pure rules. Enemy attacks route through the same TryAttack, so they get
+  every source for free.
+- WIRED THIS PHASE: Rule 1 ranged-in-melee (ranged weapon + hostile within 5 ft = disadvantage,
+  vision-independent). EnemyWithinReach(self, feet) helper added (reused later by reaction/positioning).
+- STUBBED IN PLACE (commented hooks in AddAttackModifiers): Rule 2 unseen-target / attack-from-darkness
+  (vision hook — wire when vision→combat lands); prone + other conditions (phase 3).
+- Files touched: AttackContext.cs (new), AttackResolver.cs (mode-aware roll + result fields),
+  CombatManager.cs (build context in TryAttack; AddAttackModifiers; EnemyWithinReach; roll-mode log tag).
+- NEXT: vision→combat hook (make unseen-target real — the finished Vision system's combat payoff), then
+  phase 3 conditions list on Combatant (Prone the first instance, reusing these stubbed hooks).
+  
+  ## Combat darkness — rendering vs. rules MISMATCH (DEFERRED, surfaced testing phase 2b)
+Combat lights the dungeon visually (the player sees the whole lit room when a fight starts), but CanSee
+computes vision by the RULES as if dark (baseline 1 tile + darkvision + LOS; no lighting — FogOfWar.IsLit
+absent in combat). So the unseen-target rule fires (rules say dark) while the SCREEN shows it lit — math
+and visuals disagree.
+DESIGN LEAN: combat should be DARK too (respect fog/darkvision/torches in combat), else the entire vision
+system + the phase-2b unseen-target rule is invisible/pointless once a fight begins. Thematic + makes the
+vision investment pay off in combat.
+PARTS (same deferred combat↔exploration cluster):
+- Run fog/darkness RENDERING in combat (combat-side fog, not just the flat lit plane today).
+- Close the lighting SEAM in CanSee (lit + LOS = seen) — needs lit-tile data in combat (the deferred
+  lighting-in-combat note).
+- Together: what the player SEES matches what CanSee computes.
+NOT the combat-depth spine; build with the bridge/fog-in-combat work. Capture now so phase 2b's invisibility
+on a lit screen is understood, not mistaken for a bug.
+## GENRE LOCK: semi-tactical RPG / survival horror (design compass)
+The game's identity, named explicitly. NOT a power-fantasy tactical RPG — survival horror with tactical
+combat. Retroactively justifies decisions already made on instinct; guides future forks.
+SURVIVAL-HORROR GRAMMAR (scarcity / vulnerability / dread) — already present:
+- Harsh near-blind darkness + precious light (torch consumable, opportunity cost).
+- Permadeath on TPK; town-only saves (committed once you descend); fallen bodies maybe never recovered.
+- Dungeon repopulates behind you on rest; missing "Dungeon Complete" prompt = a WARNING, not silence.
+- Over-extension can widen a fight / wake worse things; retreat-to-fetch slow-burn threats.
+COMPASS RULE: when a fork is ambiguous, pick the option that PRESERVES TENSION over the one that grants
+POWER or CONVENIENCE. Already-parked decisions all point this way:
+- Darkvision → TAX it (+ magical darkness), don't let it trivialize the dark.
+- Monster join-trigger → "monster sees you first, joins from the dark" over a clean symmetric rule.
+- Kobold retreat-to-clan → off-screen escalating dread over an immediate fightable thing.
+PRODUCTIVE TENSION TO MANAGE: "semi-tactical" (mastery, legibility, fair readable rules — the combat-depth
+spine) vs. "survival horror" (scarcity, dread, cruelty). NOT a contradiction — the tactics make the horror
+FAIR. Players should lose to understood bad decisions, not unseen dice. Visible modifiers / honest math
+(adv-disadv log, action economy) EARN the right to be cruel with the horror layer.
+SUSPECT: anything that makes the player feel safe + powerful. That's where horror dies.
+## DESIGN PERSONA: the malicious-but-fair DM (refines the genre compass)
+The game should feel like a dungeon crawl run by a DM bent on killing your party — who NEVER cheats.
+Both clauses essential; the tension between them IS the game.
+- MALICIOUS: takes no pity, exploits every legal advantage the rules grant monsters, engineers suffering.
+  Reframes monster AI from "tactically competent" to "intelligently CRUEL within the rules" — ask not
+  "what's balanced?" but "what would a ruthless DM do with these monsters + this rule set to make the
+  party suffer, LEGALLY?"
+- FAIR / TRUE TO THE RULES: never fudges. No information or actions the rules don't grant — monsters
+  don't see through walls/fog, don't meta-target the wizard by peeking at hit dice (only by legal cues:
+  saw them cast, visible robes, inference a smart creature could make). No invented rolls, no
+  unavoidable "rocks fall." Every death is one the player could have seen coming.
+WHY FAIR = THE SOURCE OF THE MALICE'S POWER (not a limit on it): a rule-breaking malicious DM is just
+unfair → rage-quit. A rule-TRUE malicious DM is terrifying → the player loses and thinks "I should've
+brought more torches / not split the party / retreated," never "the game cheated." The constraint makes
+the threat credible.
+CRUELTY EXPRESSED THROUGH LEGAL MOVES (examples, all already parked):
+- Kobold RETREATS to fetch the clan (legal, worse for you) vs. attacks and dies.
+- Blind-fire into darkness can hit your OWN party (the rule resolved honestly) vs. a quiet whiff.
+- Dungeon REPOPULATES the cleared room during rest; missing completion prompt = the only warning.
+HARD CONSTRAINT ON THE AI (on US): the DM-AI operates ONLY on legal information + legal actions. The
+instant it cheats (fog it shouldn't see, rolls it shouldn't make), horror → unfairness. Auditable:
+every AI decision should trace to rules-legal inputs.
+
+## POSITIONING / HOOK — market gap (recorded to consider for the pitch)
+Checked the landscape: the GENRE is crowded, but the specific CONTRACT is open.
+WHAT EXISTS (tactical turn-based + survival horror + darkness + permadeath is NOT virgin territory):
+- Darkest Dungeon = the flagship (turn-based, permadeath, encroaching-dark mechanic, flawed-hero roster).
+  But runs on a BESPOKE stress/position system — not a real ruleset; achieves dread via OPACITY + punishing
+  randomness (sometimes feel-bad — exactly what our "fair" clause rejects).
+- Active indie wave: LURKS WITHIN WALLS ("turn-based RPG x Resident Evil"), Stoneshard, Quasimorph, etc.
+  All use CUSTOM horror-tuned combat math. Dread via opaque + punishing.
+THE GAP (our differentiator, unoccupied in the search): nobody marries a FAITHFUL TABLETOP RULESET +
+TRANSPARENT math + a MALICIOUS-BUT-FAIR DM persona. Our bet inverts the genre norm — dread through
+TRANSPARENCY, not obscurity: real D&D 5e rules, visible advantage/disadvantage, honest dice; the horror
+is a ruthless intelligence exploiting rules you CAN see, not hidden math you can't.
+- Dark Souls proved fair-brutality sells ("hard but never cheap, every death is your fault"). Darkest
+  Dungeon proved turn-based horror sells. NOBODY combined fair-brutality + turn-based horror + a real
+  tabletop ruleset. That marriage is the hook.
+- The "why play this over Darkest Dungeon?" answer is concrete: because it's FAIR, and it's actually D&D.
+TWO CAUTIONS (honest):
+- 5e-fidelity cuts both ways: it's the differentiator AND a constraint — 5e is a heroic power-fantasy
+  system (bounded accuracy, characters get tanky). We're bending it toward horror (taxed darkvision,
+  harsh-darkness baseline). Real work, not free — "fighting our own ruleset's optimism."
+- "DM-like AI" is the novel-sounding part AND the likeliest vaporware if overscoped. The bounded-roster
+  discipline (12–15 monsters, authored traits, no general reasoner) is what makes it shippable. The
+  differentiation lives there → protecting its scope protects the whole pitch.
+- Files touched: (none — design/positioning note.)
+
+## Combat depth — Phase 3 Prone: UNRESOLVED, troubleshoot next session (pickup spot)
+STATE: Framework + Prone built and compiles clean. Debug 'P' toggles Prone (confirmed applying — log shows
+"X is now Prone"). BUT no Prone adv/disadv tag appeared on any resolved attack across several tries.
+AMBIGUITY (the exact thing to resolve first): can't tell from output whether (a) the Prone hook fires but
+the tag prints to log lines lacking {rollTag} — a LOGGING gap (same issue that bit phase 2 + 2b twice), or
+(b) the hook genuinely isn't firing — a LOGIC bug in AddAttackModifiers.
+FIRST STEP TOMORROW: re-add the unconditional diagnostic in TryAttack, immediately after the
+AttackResolver.Resolve(...) call:
+    Debug.Log($"[roll] net={ctx.DescribeNet()} mode={res.rollMode} kept={res.attackRoll} dropped={res.otherRoll}");
+Then attack a prone target once and read the [roll] line:
+  - net=disadvantage/advantage (target prone ...) => hook WORKS, problem is logging → add {rollTag} to the
+    plain hit + miss + crit log lines in TryAttack (the crit line gap is what hid advantage in phase 2b).
+  - net=flat => hook NOT firing → debug the Prone block in AddAttackModifiers.
+TEST-SETUP GOTCHA that muddied tonight's read: s4 still has the BOW (rangeFeet 80 = ranged), so every s4
+attack on a prone target is the DISADVANTAGE (ranged) case — the advantage (melee) case CANNOT be tested
+with s4. To see advantage, use a combatant holding a MELEE weapon (rangeFeet <=5) adjacent to a prone target.
+LIKELY

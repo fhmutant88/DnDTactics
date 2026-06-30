@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using DnDTactics.Characters;
 using DnDTactics.Data;
@@ -23,6 +24,59 @@ namespace DnDTactics.Combat
         // If this combatant is a monster, the XP awarded for defeating it.
         public int XpReward { get; private set; }
         public void SetXpReward(int xp) => XpReward = xp;
+        
+        // --- Action economy: reaction ---
+        // A reaction is spent during OTHER creatures' turns (e.g. opportunity attacks),
+        // so unlike action/bonus/movement it lives here on the combatant, not in
+        // TurnResources. Reset at the START of this combatant's own turn.
+        public bool ReactionAvailable { get; private set; } = true;
+        public void ResetReaction() => ReactionAvailable = true;
+        public bool TrySpendReaction()
+        {
+            if (!ReactionAvailable) return false;
+            ReactionAvailable = false;
+            return true;
+        }
+
+        // --- Conditions (combat-only state) ---
+        // A typed list of what's active. Consuming systems (AddAttackModifiers, later movement
+        // and saves) query HasCondition and apply the rule locally — conditions are DATA, not
+        // behavior, because their effects are scattered across systems. Generalizes the
+        // "list of active conditions, each with its own clear rule + effect" pattern.
+        private readonly List<ActiveCondition> conditions = new();
+        public IReadOnlyList<ActiveCondition> Conditions => conditions;
+
+        public bool HasCondition(ConditionType type)
+        {
+            foreach (var c in conditions) if (c.Type == type) return true;
+            return false;
+        }
+
+        // Add a condition (no duplicate stacking of the same type). rounds = -1 means it
+        // persists until explicitly removed (Prone, until you stand up).
+        public void AddCondition(ConditionType type, int rounds = -1, string source = null)
+        {
+            if (HasCondition(type)) return;
+            conditions.Add(new ActiveCondition(type, rounds, source));
+        }
+
+        public bool RemoveCondition(ConditionType type)
+        {
+            for (int i = conditions.Count - 1; i >= 0; i--)
+                if (conditions[i].Type == type) { conditions.RemoveAt(i); return true; }
+            return false;
+        }
+
+        // Tick durationed conditions (call at the start of the combatant's turn); drop expired.
+        // Prone (-1) is unaffected. Makes future durationed conditions work with no extra wiring.
+        public void TickConditions()
+        {
+            for (int i = conditions.Count - 1; i >= 0; i--)
+            {
+                conditions[i].Tick();
+                if (conditions[i].IsExpired) conditions.RemoveAt(i);
+            }
+        }
 
         private Renderer bodyRenderer;
         private Color baseColor;
