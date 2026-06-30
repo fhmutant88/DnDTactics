@@ -940,3 +940,14 @@ TEST-SETUP GOTCHA that muddied tonight's read: s4 still has the BOW (rangeFeet 8
 attack on a prone target is the DISADVANTAGE (ranged) case — the advantage (melee) case CANNOT be tested
 with s4. To see advantage, use a combatant holding a MELEE weapon (rangeFeet <=5) adjacent to a prone target.
 LIKELY
+
+## PROCESS CONVENTIONS (survive context resets — re-read at session start)
+- Close every milestone/stopping point with explicit git add + commit + tag commands. Tag name
+  encodes the state (e.g. phase-3-prone-unverified). Commit message records what's done + what's
+  left (TODO next session).
+- Every Design_Notes entry includes a "Files touched:" line (every script created/modified).
+- Phased delivery within milestones: named phases, explicit handoff/verify condition before proceeding.
+- Orient against real code (paste the actual files) before designing a new system.
+- These conventions live in the conversation by default and DON'T survive a history clear — so they're
+  recorded HERE. If a session starts fresh from Design_Notes, re-read this block.
+  
