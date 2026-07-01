@@ -1088,3 +1088,21 @@ and 5e "moving within reach doesn't provoke" makes endpoint-compare correct for 
   ResolveOpportunityAttacks, TryAttackAsReaction, CommitMove, TryMoveTo rewrite, pending-move + Y/N in Update,
   RequestDisengage + 'G').
 - NEXT: move-through-enemies occupancy fix (MovementRange), OR more conditions, OR death saves (phase 5).
+## Combat depth — Phase 4 COMPLETE (pickup spot)
+DONE + verified: opportunity attacks (OA on leaving reach, endpoint-compare, no path needed), provoke
+warning (Y/N informed-choice gate), Disengage ('G', suppresses OAs), all reaction-slot-gated. Cross-system
+win confirmed: paralyzed enemies can't OA (3b + 4 compose). Committed + tagged phase-4-opportunity-attacks.
+SPINE STATUS: phases 1 (action economy), 2 (adv/disadv pipeline), 2b (vision-in-combat), 3/3b (conditions:
+Prone + Paralyzed), 4 (reactions/OA/Disengage) — all done. Combat is deep in the 5e sense now.
+OPEN LOOSE ENDS (noted, not bugs blocking anything):
+- Move-through-enemies occupancy bug still live (separate: MovementRange block-test fix, NOT reactions).
+  Cheap next slice now that reaction scaffolding exists.
+- Enemy AI doesn't CHOOSE to Disengage (blunders + eats OAs — characterful for mindless; smart-Disengage =
+  monster-AI milestone).
+- OA timing simplification (resolved after reaching dest, not mid-leave) + third-enemy-mid-path clip not
+  detected — both noted, irrelevant until reach weapons / forced movement exist.
+- Save system still stubbed (blocks Ghoul's paralysis applier + Paralyzed auto-fail-saves).
+DEBUG KEYS live: D=Dash, G=Disengage, P=Prone toggle, L=Paralyzed toggle (keep until real appliers exist).
+NEXT options: (a) move-through-enemies occupancy fix (small, closes a flagged bug), (b) death saves/phase 5
+(down-but-not-out; DropCombatant forks: players linger dying, enemies removed — high horror payoff),
+(c) more conditions (Restrained/Blinded/Frightened, fast wins lighting up bestiary monsters).
