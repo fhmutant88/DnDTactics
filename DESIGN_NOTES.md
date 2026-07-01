@@ -1059,3 +1059,32 @@ STILL STUBBED (don't forget): auto-fail STR/DEX saves (needs save system). Ghoul
 save-gated applier to weaponize this — same dependency.
 KEEP: debug 'P' (Prone) and 'L' (Paralyzed) keys — they test every future condition until real appliers exist.
 NEXT after verify: phase 4 (reactions + opportunity attacks — the big one,
+
+## Combat depth — Phase 4: opportunity attacks + Disengage + provoke warning (design)
+First consumer of the phase-1 reaction slot. KEY REALIZATION: OAs need NO path/step-wise movement —
+provoking is an ENDPOINT property (adjacent at start AND not adjacent at end = left reach = provoked).
+Destination-jump TryMoveTo is sufficient; the structural "need step-wise movement" worry was overblown
+for OAs specifically. (Known simplification: clipping a THIRD enemy's reach mid-path isn't detected — rare,
+and 5e "moving within reach doesn't provoke" makes endpoint-compare correct for the common case.)
+- ProvokedAttackers(mover, from, to): enemies within melee reach (5ft; ranged capped) at `from` but not
+  `to`, who have a reaction and aren't incapacitated. Shared by warning + resolution. Empty if Disengaged.
+- Opportunity attack: each provoker spends TrySpendReaction() (phase-1 slot) → one melee attack via
+  TryAttackAsReaction (no action cost; full AttackResolver pipeline so adv/disadv + mover's conditions apply).
+- WARNING (fair-DM informed choice): a PLAYER move that provokes pauses (awaitingProvokeConfirm) → logs the
+  provokers → Y commits / N cancels. Enemies resolve without prompt (AI already decided). Minimal but REAL
+  (not deferred) — the informed choice is the fairness core. Pretty UI = art phase.
+- Disengage: spends the action (TrySpendAction) → SetDisengaged(true) → suppresses OAs this turn. Reset at
+  BeginTurn (own-turn only). 'G' key. The fair counter to OAs — built together so the rule isn't one-sided.
+- Guards/interactions: no-reaction, incapacitated (paralyzed enemies can't OA — ties to 3b), down, same-team
+  all correctly exclude. Disengage short-circuits.
+- Combatant: DisengagedThisTurn flag (+ reset in BeginTurn). CombatManager: ProvokedAttackers,
+  ResolveOpportunityAttacks, TryAttackAsReaction, CommitMove (split from TryMoveTo), pending-move fields +
+  Y/N handling in Update, RequestDisengage + 'G' key.
+- DEFERRED / NOTED: enemy AI doesn't yet CHOOSE to Disengage or weigh provoking (blunders + eats OAs —
+  characterful for mindless monsters; smart-Disengage = monster-AI milestone). Move-through-enemies OCCUPANCY
+  bug is SEPARATE (MovementRange block test, not reactions) — next slice. Third-enemy-mid-path clip = known
+  simplification.
+- Files touched: Combatant.cs (DisengagedThisTurn + reset); CombatManager.cs (ProvokedAttackers,
+  ResolveOpportunityAttacks, TryAttackAsReaction, CommitMove, TryMoveTo rewrite, pending-move + Y/N in Update,
+  RequestDisengage + 'G').
+- NEXT: move-through-enemies occupancy fix (MovementRange), OR more conditions, OR death saves (phase 5).

@@ -58,6 +58,11 @@ namespace DnDTactics.Combat
         private TurnResources resources = new TurnResources();
         private Dictionary<GridCoord, int> reachable = new();
 
+        private bool awaitingProvokeConfirm = false;
+        private GridCoord pendingMoveTarget;
+        private int pendingMoveCost;
+        private List<Combatant> pendingProvokers;
+
         // External setup: provide the grid the combat runs on.
         public void SetGrid(TacticalGrid externalGrid)
         {
@@ -149,15 +154,33 @@ namespace DnDTactics.Combat
         void Update()
         {
             if (!encounterRunning) return; // ignore combat input outside an active encounter
+            if (awaitingProvokeConfirm)
+            {
+                if (Input.GetKeyDown(KeyCode.Y))
+                {
+                    awaitingProvokeConfirm = false;
+                    var mover = turnOrder.Current?.combatant;
+                    if (mover != null) CommitMove(mover, pendingMoveTarget, pendingMoveCost, pendingProvokers);
+                }
+                else if (Input.GetKeyDown(KeyCode.N))
+                {
+                    awaitingProvokeConfirm = false;
+                    Debug.Log("Move cancelled.");
+                }
+                return;   // swallow other input while waiting
+            }
+
             var active = turnOrder.Current?.combatant;
             bool playerTurn = active != null && active.Team == Team.Player;
-
+            
             if (Input.GetMouseButtonDown(0) && !PointerOverUI()) HandleClick();
             if (playerTurn && Input.GetMouseButtonDown(1) && !PointerOverUI()) HandleAttackClick();
             if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();
             if (playerTurn && Input.GetKeyDown(KeyCode.D)) RequestDash();
+            if (playerTurn && Input.GetKeyDown(KeyCode.G)) RequestDisengage();
             if (Input.GetKeyDown(KeyCode.P)) DebugToggleProne();
             if (Input.GetKeyDown(KeyCode.L)) DebugToggleParalyzed();
+
 
         }
 
@@ -261,6 +284,18 @@ namespace DnDTactics.Combat
             RefreshMovementRange();
         }
 
+        // Disengage: spend your action so your movement doesn't provoke opportunity attacks this turn.
+        public void RequestDisengage()
+        {
+            if (!IsPlayerTurn) return;
+            var active = turnOrder.Current?.combatant;
+            if (active == null) return;
+            if (active.DisengagedThisTurn) { Debug.Log("Already Disengaged this turn."); return; }
+            if (!resources.TrySpendAction()) { Debug.Log("No action left to Disengage."); return; }
+            active.SetDisengaged(true);
+            Debug.Log($"{active.Character.characterName} Disengages — movement won't provoke this turn.");
+        }
+
         // DEBUG: toggle Prone on the selected combatant, to exercise the conditions→attack
         // hooks until a real applier (Shove / drop-prone action) exists. Remove when those land.
         void DebugToggleProne()
@@ -334,6 +369,7 @@ namespace DnDTactics.Combat
 
             resources.ResetForTurn(entry.combatant.Character.Speed);
             entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
+            entry.combatant.SetDisengaged(false);   // Disengage lasts only your own turn
             entry.combatant.TickConditions();     // durationed conditions count down (Prone is permanent)
             RefreshMovementRange();
 
@@ -352,6 +388,52 @@ namespace DnDTactics.Combat
             // Enemies act automatically; players wait for input.
             if (entry.combatant.Team == Team.Enemy)
                 StartCoroutine(RunEnemyTurn(entry.combatant));
+        }
+
+        // Each provoked attacker spends its reaction for one melee attack against the mover.
+        // Called AFTER the mover reaches `to` (5e: the OA happens as you leave, target still adjacent
+        // at the moment of the attack — we resolve from the attacker's cell against the mover).
+        void ResolveOpportunityAttacks(List<Combatant> attackers, Combatant mover)
+        {
+            foreach (var oa in attackers)
+            {
+                if (oa == null || !oa.ReactionAvailable) continue;
+                if (!oa.TrySpendReaction()) continue;
+                Debug.Log($"*** {oa.Character.characterName} takes an opportunity attack " +
+                          $"on {mover.Character.characterName}! ***");
+                TryAttackAsReaction(oa, mover);
+                if (mover.Character.IsDown) break;   // mover dropped mid-flight; stop
+            }
+        }
+
+        // An attack made as a reaction (opportunity attack): no action cost (the reaction was already
+        // spent), no range/team re-validation beyond what the OA check guaranteed. Reuses the full
+        // AttackResolver pipeline so adv/disadv (incl. mover's conditions) all apply.
+        void TryAttackAsReaction(Combatant attacker, Combatant target)
+        {
+            if (attacker.Weapon == null) return;
+
+            var ctx = new AttackContext();
+            int distFeet = attacker.Coord.DistanceInFeet(target.Coord);
+            AddAttackModifiers(ctx, attacker, target, distFeet);
+
+            AttackResult res = AttackResolver.Resolve(
+                attacker.Character, target.Character, attacker.Weapon, ctx);
+
+            string rollTag = res.rollMode == RollMode.Flat ? "" : $" [{ctx.DescribeNet()}; kept {res.attackRoll}, dropped {res.otherRoll}]";
+            string atkName = attacker.Character.characterName;
+            string defName = target.Character.characterName;
+
+            if (res.critMiss) Debug.Log($"OA: {atkName} rolls a natural 1 — miss!{rollTag}");
+            else if (!res.hit) Debug.Log($"OA: {atkName} misses {defName} ({res.attackTotal} vs AC {res.targetAC}).{rollTag}");
+            else
+            {
+                target.Character.TakeDamage(res.damage);
+                string critTag = res.crit ? " CRIT!" : "";
+                Debug.Log($"OA: {atkName} hits {defName}{critTag} for {res.damage}. " +
+                          $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}{rollTag}");
+                if (target.Character.IsDown) DropCombatant(target);
+            }
         }
 
         IEnumerator RunEnemyTurn(Combatant enemy)
@@ -406,17 +488,43 @@ namespace DnDTactics.Combat
         {
             var active = turnOrder.Current?.combatant;
             if (active == null) return;
-            if (!reachable.TryGetValue(target, out int cost)) return; // not a legal cell
+            if (!reachable.TryGetValue(target, out int cost)) return;
             if (!resources.CanSpendMovement(cost)) return;
 
-            occupancy.Remove(active.Coord);     // leave old cell
+            var provokers = ProvokedAttackers(active, active.Coord, target);
+
+            // Player moves that provoke → warn and wait for confirmation (fair-DM: informed choice).
+            // Enemy moves → the AI already decided; resolve without a prompt.
+            if (provokers.Count > 0 && active.Team == Team.Player && !awaitingProvokeConfirm)
+            {
+                pendingMoveTarget = target;
+                pendingMoveCost = cost;
+                pendingProvokers = provokers;
+                awaitingProvokeConfirm = true;
+                string who = string.Join(", ", provokers.ConvertAll(p => p.Character.characterName));
+                Debug.Log($"⚠ Moving there provokes an opportunity attack from: {who}. " +
+                          $"Press Y to proceed, N to cancel.");
+                return;   // wait for the player's Y/N (handled in Update)
+            }
+
+            CommitMove(active, target, cost, provokers);
+        }
+
+        // Actually perform the move and resolve any opportunity attacks it provokes.
+        void CommitMove(Combatant active, GridCoord target, int cost, List<Combatant> provokers)
+        {
+            occupancy.Remove(active.Coord);
             active.SetCoord(target, grid, tokenYOffset);
-            occupancy[active.Coord] = active;   // claim new cell
+            occupancy[active.Coord] = active;
             resources.SpendMovement(cost);
 
-            Debug.Log($"{active.Character.characterName} moved to {target} " +
-                      $"({cost} ft). Movement left: {resources.MovementRemaining} ft.");
-            RefreshMovementRange();             // recompute from the new spot
+            Debug.Log($"{active.Character.characterName} moved to {target} ({cost} ft). " +
+                      $"Movement left: {resources.MovementRemaining} ft.");
+
+            if (provokers != null && provokers.Count > 0)
+                ResolveOpportunityAttacks(provokers, active);
+
+            RefreshMovementRange();
         }
 
         void EndTurn()
@@ -549,6 +657,34 @@ namespace DnDTactics.Combat
                 if (self.Coord.DistanceInFeet(c.Coord) <= feet) return true;
             }
             return false;
+        }
+
+        // Enemies who have an opportunity attack against `mover` for a move from->to:
+        // those adjacent (within reach) at the start cell but NOT at the destination —
+        // i.e. the mover LEAVES their reach. 5e OA rule, computed by endpoint comparison
+        // (no path needed: provoking depends on entering/leaving reach, a start/end property).
+        // Returns empty if the mover Disengaged this turn.
+        List<Combatant> ProvokedAttackers(Combatant mover, GridCoord from, GridCoord to)
+        {
+            var result = new List<Combatant>();
+            if (mover == null || mover.DisengagedThisTurn) return result;
+
+            foreach (var c in combatants)
+            {
+                if (c == null || c == mover || c.Team == mover.Team) continue;
+                if (c.Character.IsDown) continue;
+                if (!c.ReactionAvailable) continue;             // no reaction left → can't OA
+                if (c.IsIncapacitated) continue;                // paralyzed/stunned can't react
+
+                int reach = c.Weapon != null ? c.Weapon.rangeFeet : 5;
+                // Only melee reach provokes OAs (ranged weapons don't threaten reach).
+                if (reach > 5) reach = 5;                        // OA is a melee reaction; cap at melee reach
+                bool reachedStart = from.DistanceInFeet(c.Coord) <= reach;
+                bool reachesEnd = to.DistanceInFeet(c.Coord) <= reach;
+                if (reachedStart && !reachesEnd)
+                    result.Add(c);                              // adjacent at start, left at end → provoked
+            }
+            return result;
         }
 
         // Can viewer see subject's tile right now? Darkvision + LOS (Vision rules class).

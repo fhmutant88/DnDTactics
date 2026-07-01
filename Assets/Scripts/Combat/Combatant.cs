@@ -38,6 +38,11 @@ namespace DnDTactics.Combat
             return true;
         }
 
+        // Set when this combatant takes the Disengage action; suppresses opportunity attacks
+        // against it for the rest of its turn. Reset at the start of its own turn.
+        public bool DisengagedThisTurn { get; private set; }
+        public void SetDisengaged(bool v) => DisengagedThisTurn = v;
+
         // --- Conditions (combat-only state) ---
         // A typed list of what's active. Consuming systems (AddAttackModifiers, later movement
         // and saves) query HasCondition and apply the rule locally — conditions are DATA, not
