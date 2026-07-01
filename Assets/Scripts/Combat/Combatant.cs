@@ -52,6 +52,13 @@ namespace DnDTactics.Combat
             return false;
         }
 
+        // Incapacitated by any condition that removes actions (Paralyzed, later Stunned/Unconscious).
+        // Consulted at the start of a turn to skip a creature that can't act.
+        public bool IsIncapacitated =>
+            HasCondition(ConditionType.Paralyzed) ||
+            HasCondition(ConditionType.Stunned) ||
+            HasCondition(ConditionType.Unconscious);
+
         // Add a condition (no duplicate stacking of the same type). rounds = -1 means it
         // persists until explicitly removed (Prone, until you stand up).
         public void AddCondition(ConditionType type, int rounds = -1, string source = null)

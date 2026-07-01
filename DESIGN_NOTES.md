@@ -1015,3 +1015,47 @@ interleaving, feature-interaction combinatorics) for depth that serves build-opt
 horror — runs counter to the genre (power-gamer mastery tool vs. our stretched-thin design). Keeps
 level-up flow / XP curves / level-10 cap clean. Files touched: (none — scoping decision.)
 
+## Combat depth — Phase 3b: Paralyzed condition (DONE, save-stub open)
+Second conditions instance — proves the framework generalizes beyond attack modifiers (Prone) to
+incapacitation + forced results. Unlocks Ghoul (first signature bestiary monster; paralysis is its identity).
+- NEW PATTERN — forced crit: AttackContext.AddForcedCrit/HasForcedCrit (collected like adv/disadv, but a
+  RESULT modifier not a roll modifier). AttackResolver: a HIT becomes a crit if HasForcedCrit — applied
+  AFTER the hit check (paralysis auto-crits hits, doesn't auto-HIT; a miss still misses). Generalizes to
+  future forced-crit effects.
+- Paralyzed effects built: (a) attacks vs. it = advantage; (b) MELEE hit within 5ft = auto-crit (forced
+  crit, !ranged only — correct 5e); (c) CAN'T ACT = turn skipped at BeginTurn via Combatant.IsIncapacitated
+  (covers Paralyzed/Stunned/Unconscious — latter two auto-covered when built). Skip happens AFTER
+  TickConditions so a durationed paralysis spends its round correctly.
+- STUBBED (needs save system, deferred): auto-fail STR/DEX saves. Marked in the Paralyzed attack block.
+- Combatant.IsIncapacitated helper (Paralyzed||Stunned||Unconscious). CombatManager: turn-skip block in
+  BeginTurn + DescribeIncapacitation log helper; Paralyzed wired in AddAttackModifiers beside Prone;
+  DebugToggleParalyzed on 'L' key (until Ghoul applies it for real).
+- Files touched: AttackContext.cs (forced-crit fields); AttackResolver.cs (forced-crit on hit);
+  Combatant.cs (IsIncapacitated); CombatManager.cs (BeginTurn skip + DescribeIncapacitation; Paralyzed in
+  AddAttackModifiers; DebugToggleParalyzed + 'L' key).
+- GHOUL READINESS: paralysis mechanics now exist; Ghoul needs only an attack that APPLIES Paralyzed on a
+  failed save — i.e. waits on the save system (same dependency as the stub). Until then, debug 'L' simulates it.
+- NEXT options: phase 4 (reactions + opportunity attacks — the big one, needs step-wise movement) OR more
+  conditions (Restrained/Blinded/Frightened reuse these hooks).
+  
+  ## Combat depth — Phase 3b Paralyzed: BUILT, UNTESTED (pickup spot)
+STATE: Code complete + compiles clean (fixed the ConditionType.Paralyzed enum entry + the
+DescribeIncapacitation misplacement — it's now a proper class member, not nested in Update).
+NOT YET TESTED. Run three checks when back:
+1. AUTO-CRIT + ADVANTAGE: select enemy → 'L' (paralyzed) → MELEE-weapon hero adjacent → attack.
+   Expect a hit that CRITs + [advantage (target paralyzed)]. KEY PROOF: confirm the kept die was
+   NOT 20 — that proves the crit was FORCED, not rolled lucky.
+2. TURN SKIP: paralyze a combatant whose turn is coming → when initiative reaches it, expect
+   "[name] is incapacitated (Paralyzed) — turn skipped." and the turn passes (no AI move / no input wait).
+3. RANGED EXCEPTION: paralyze a target, attack with a BOW from range → expect [advantage (target
+   paralyzed)] but NO auto-crit (melee-only rule).
+GOTCHA (same as Prone): use a MELEE weapon (rangeFeet<=5) for check 1 — a bow only shows advantage,
+never the auto-crit.
+IF ALL THREE PASS → commit + tag:
+  git add Assets/Scripts/Combat/AttackContext.cs Assets/Scripts/Combat/AttackResolver.cs Assets/Scripts/Combat/Combatant.cs Assets/Scripts/Combat/CombatManager.cs
+  git commit -m "Phase 3b: Paralyzed (advantage + melee auto-crit + turn skip); forced-crit in AttackContext"
+  git tag phase-3b-paralyzed
+STILL STUBBED (don't forget): auto-fail STR/DEX saves (needs save system). Ghoul needs only a
+save-gated applier to weaponize this — same dependency.
+KEEP: debug 'P' (Prone) and 'L' (Paralyzed) keys — they test every future condition until real appliers exist.
+NEXT after verify: phase 4 (reactions + opportunity attacks — the big one,

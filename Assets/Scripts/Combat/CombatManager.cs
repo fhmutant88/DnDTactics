@@ -157,6 +157,8 @@ namespace DnDTactics.Combat
             if (playerTurn && Input.GetKeyDown(KeyCode.Space)) EndTurn();
             if (playerTurn && Input.GetKeyDown(KeyCode.D)) RequestDash();
             if (Input.GetKeyDown(KeyCode.P)) DebugToggleProne();
+            if (Input.GetKeyDown(KeyCode.L)) DebugToggleParalyzed();
+
         }
 
         // True when the mouse is over a UI element, so game clicks don't bleed through it.
@@ -276,6 +278,31 @@ namespace DnDTactics.Combat
             }
         }
 
+        // Names the condition removing a creature's turn, for the skip log.
+        string DescribeIncapacitation(Combatant c)
+        {
+            if (c.HasCondition(ConditionType.Paralyzed)) return "Paralyzed";
+            if (c.HasCondition(ConditionType.Stunned)) return "Stunned";
+            if (c.HasCondition(ConditionType.Unconscious)) return "Unconscious";
+            return "incapacitated";
+        }
+
+        // DEBUG: toggle Paralyzed on the selected combatant (until Ghoul's attack applies it for real).
+        void DebugToggleParalyzed()
+        {
+            if (selected == null) { Debug.Log("No combatant selected to toggle Paralyzed."); return; }
+            if (selected.HasCondition(ConditionType.Paralyzed))
+            {
+                selected.RemoveCondition(ConditionType.Paralyzed);
+                Debug.Log($"{selected.Character.characterName} is no longer Paralyzed.");
+            }
+            else
+            {
+                selected.AddCondition(ConditionType.Paralyzed);
+                Debug.Log($"{selected.Character.characterName} is now Paralyzed.");
+            }
+        }
+
         // Additive HUD reads for the new resources.
         public bool ActiveBonusActionAvailable => resources != null && resources.BonusActionAvailable;
         public bool ActiveFreeInteractionAvailable => resources != null && resources.FreeInteractionAvailable;
@@ -309,6 +336,15 @@ namespace DnDTactics.Combat
             entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
             entry.combatant.TickConditions();     // durationed conditions count down (Prone is permanent)
             RefreshMovementRange();
+
+            // Incapacitated (Paralyzed/Stunned/Unconscious) → no actions or movement; skip the turn.
+            if (entry.combatant.IsIncapacitated)
+            {
+                Debug.Log($"{entry.combatant.Character.characterName} is incapacitated " +
+                          $"({DescribeIncapacitation(entry.combatant)}) — turn skipped.");
+                EndTurn();
+                return;
+            }
 
             Debug.Log($"--- Round {turnOrder.Round}: {entry.combatant.Character.characterName}'s turn " +
                       $"({entry.combatant.Team}) — Speed {entry.combatant.Character.Speed} ft ---");
@@ -490,6 +526,16 @@ namespace DnDTactics.Combat
             {
                 if (ranged) ctx.AddDisadvantage("target prone (ranged)");
                 else ctx.AddAdvantage("target prone (melee)");
+            }
+
+            // CONDITIONS — Paralyzed (target). Attacks against it have advantage; a melee hit
+            // from within 5 ft is an automatic crit. ("Can't act" is handled at turn start;
+            // auto-fail STR/DEX saves is stubbed until the save system exists.)
+            if (target.HasCondition(ConditionType.Paralyzed))
+            {
+                ctx.AddAdvantage("target paralyzed");
+                if (!ranged)  // melee within reach → auto-crit on hit
+                    ctx.AddForcedCrit("target paralyzed (melee)");
             }
         }
 

@@ -6,6 +6,7 @@ namespace DnDTactics.Combat
     public enum ConditionType
     {
         Prone,
+        Paralyzed,
         Grappled,
         Restrained,
         Incapacitated,

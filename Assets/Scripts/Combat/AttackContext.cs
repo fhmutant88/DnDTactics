@@ -19,6 +19,13 @@ namespace DnDTactics.Combat
         public bool HasAdvantage => advReasons.Count > 0;
         public bool HasDisadvantage => disReasons.Count > 0;
 
+        // Forced critical hit (e.g. melee vs. a paralyzed target): if the attack HITS, it crits,
+        // regardless of the d20. Not a roll modifier — a result modifier. Collected like adv/disadv.
+        private readonly List<string> forcedCritReasons = new();
+        public void AddForcedCrit(string reason) => forcedCritReasons.Add(reason);
+        public bool HasForcedCrit => forcedCritReasons.Count > 0;
+        public string ForcedCritReason => forcedCritReasons.Count > 0 ? forcedCritReasons[0] : null;
+
         // 5e cancellation: one of each cancels to flat, regardless of counts.
         public RollMode NetRollMode
         {

@@ -58,6 +58,11 @@ namespace DnDTactics.Combat
             r.hit = r.crit || r.attackTotal >= r.targetAC;
             if (!r.hit) return r;
 
+            // Forced crit (e.g. melee vs. paralyzed): a hit becomes a crit regardless of the die.
+            // Applied only on a hit — paralysis auto-crits hits, it doesn't auto-hit.
+            if (context != null && context.HasForcedCrit)
+                r.crit = true;
+
             // Damage: weapon dice + ability modifier. A crit doubles the DICE only.
             int diceCount = r.crit ? weapon.damageDiceCount * 2 : weapon.damageDiceCount;
             int damage = Dice.RollMany(diceCount, weapon.damageDieSides) + abilityMod;
