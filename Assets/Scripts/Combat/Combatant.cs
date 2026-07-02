@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DnDTactics.Characters;
 using DnDTactics.Data;
+using DnDTactics.Rules;
 
 namespace DnDTactics.Combat
 {
@@ -24,7 +25,12 @@ namespace DnDTactics.Combat
         // If this combatant is a monster, the XP awarded for defeating it.
         public int XpReward { get; private set; }
         public void SetXpReward(int xp) => XpReward = xp;
-        
+
+        // If this combatant is a monster with a signature on-hit ability, it lives here (set at spawn).
+        // Null for heroes and plain-attacker monsters.
+        public DnDTactics.Data.MonsterAbility OnHitAbility { get; private set; }
+        public void SetOnHitAbility(DnDTactics.Data.MonsterAbility ability) => OnHitAbility = ability;
+
         // --- Action economy: reaction ---
         // A reaction is spent during OTHER creatures' turns (e.g. opportunity attacks),
         // so unlike action/bonus/movement it lives here on the combatant, not in
@@ -66,10 +72,13 @@ namespace DnDTactics.Combat
 
         // Add a condition (no duplicate stacking of the same type). rounds = -1 means it
         // persists until explicitly removed (Prone, until you stand up).
-        public void AddCondition(ConditionType type, int rounds = -1, string source = null)
+        // Add a condition (no duplicate stacking of the same type).
+        public void AddCondition(ConditionType type, ClearRule clear = ClearRule.UntilRemoved,
+                                 int rounds = -1, string source = null,
+                                 Ability saveAbility = Ability.Constitution, int saveDC = 10)
         {
             if (HasCondition(type)) return;
-            conditions.Add(new ActiveCondition(type, rounds, source));
+            conditions.Add(new ActiveCondition(type, clear, rounds, source, saveAbility, saveDC));
         }
 
         public bool RemoveCondition(ConditionType type)
@@ -88,6 +97,26 @@ namespace DnDTactics.Combat
                 conditions[i].Tick();
                 if (conditions[i].IsExpired) conditions.RemoveAt(i);
             }
+        }
+
+        // End-of-turn escape saves: for each RepeatingSave condition, re-roll; on success, the
+        // condition ends. Returns the list of (condition, saveResult) for the caller to log.
+        // Called at the affected creature's turn (even though a paralyzed creature is skipped —
+        // the save still happens). Removal here is why Ghoul paralysis isn't permanent.
+        public System.Collections.Generic.List<(ConditionType type, bool escaped)> ProcessEscapeSaves()
+        {
+            var outcomes = new System.Collections.Generic.List<(ConditionType, bool)>();
+            for (int i = conditions.Count - 1; i >= 0; i--)
+            {
+                var cond = conditions[i];
+                if (cond.Clear != ClearRule.RepeatingSave) continue;
+
+                var result = SaveResolver.Resolve(this, cond.SaveAbility, cond.SaveDC);
+                bool escaped = result.success;   // auto-fail (still incapacitated) returns false
+                outcomes.Add((cond.Type, escaped));
+                if (escaped) conditions.RemoveAt(i);
+            }
+            return outcomes;
         }
 
         // --- Death saves (combat-only; resolves to barracks Down/Dead at encounter end) ---

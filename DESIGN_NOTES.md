@@ -1129,4 +1129,28 @@ vs a DC." Built as a reusable primitive mirroring AttackResolver; one real consu
   save vs DC or gain Paralyzed") — the save half exists. That applier = the first real save consumer + first
   signature bestiary monster.
   
+  ## Combat depth — Monster ability system + GHOUL (first signature monster) (DONE)
+Data-driven save-or-suffer-condition riders. First real consumer of the save system; makes Ghoul real —
+every combat system converging on one monster.
+- MonsterAbility (Data): authored per-monster (enabled, appliesCondition, saveAbility, saveDC, clearRule,
+  durationRounds). MIRROR enums (ConditionTypeData/ConditionClearData) keep Data independent of Combat.
+- MonsterStats.onHitAbility field; SpawnMonster attaches it to the Combatant (Combatant.OnHitAbility) when
+  enabled. Adapter unchanged (SpawnMonster has stats in hand).
+- MAPPING: single translation point in CombatManager (MapCondition/MapClearRule) — Data enums → Combat
+  ConditionType/ClearRule. Drift = compile error here, not silent.
+- ON HIT (TryAttack + TryAttackAsReaction): surviving target rolls the ability's save (SaveResolver); on
+  fail, AddCondition with authored clear-rule + DC. Skipped if the hit killed them (else-branch). OAs carry
+  the rider too (a Ghoul's opportunity attack paralyzes).
+- ESCAPE SAVE (BeginTurn): Combatant.ProcessEscapeSaves re-rolls RepeatingSave conditions at the afflicted
+  creature's turn; success ends the condition BEFORE the incapacitation skip (so shaking it off = normal turn).
+  Faithful repeating-save (start-of-turn timing ≈ 5e end-of-turn for a skipped turn; simpler).
+- KEY INTERLOCK: Ghoul's escape save is CONSTITUTION — NOT auto-failed by Paralyzed (only Str/Dex auto-fail),
+  so the creature can actually escape. WARNING for future save-or-condition monsters: never use an
+  auto-failed save ability (Str/Dex) as the ESCAPE save, or the condition is permanent.
+- GHOUL LOOP COMPLETE: hit → Con save or Paralyzed → helpless (advantage + melee auto-crit, phase 3b) →
+  re-save each turn to escape. Authoring template for Cockatrice/Basilisk/Mind Flayer (same shape).
+- Files touched: Combatant.cs (OnHitAbility); CombatManager.cs (SpawnMonster attach; MapCondition/
+  MapClearRule; TryApplyOnHitAbility in TryAttack + TryAttackAsReaction; ProcessEscapeSaves in BeginTurn).
+  (MonsterAbility.cs + MonsterStats.onHitAbility authored earlier this session.)
+  
   

@@ -90,7 +90,12 @@ namespace DnDTactics.Combat
         {
             var character = MonsterAdapter.ToCharacter(stats);
             var c = SpawnExisting(character, Team.Enemy, coord, enemyColor, enemyWeapon);
-            if (c != null) c.SetXpReward(stats.XpReward);
+            if (c != null)
+            {
+                c.SetXpReward(stats.XpReward);
+                if (stats.onHitAbility != null && stats.onHitAbility.enabled)
+                    c.SetOnHitAbility(stats.onHitAbility);
+            }
             return c;
         }
 
@@ -397,6 +402,13 @@ namespace DnDTactics.Combat
                 // (Unconscious) skips the rest of the turn. If a nat 20 revived them, they're
                 // conscious now and take a normal turn.
             }
+
+            // Repeating-save conditions (e.g. Ghoul paralysis): the afflicted creature re-rolls at
+            // its turn to shake them off. Runs even though a paralyzed creature is then skipped —
+            // the save still happens. Success ends the condition (may un-skip the turn).
+            foreach (var (type, escaped) in entry.combatant.ProcessEscapeSaves())
+                Debug.Log($"{entry.combatant.Character.characterName} " +
+                          (escaped ? $"shakes off {type}!" : $"is still {type} (failed the escape save)."));
             RefreshMovementRange();
 
             // Incapacitated (Paralyzed/Stunned/Unconscious) → no actions or movement; skip the turn.
@@ -476,6 +488,7 @@ namespace DnDTactics.Combat
                 Debug.Log($"OA: {atkName} hits {defName}{critTag} for {res.damage}. " +
                           $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}{rollTag}");
                 if (target.Character.IsDown) DropCombatant(target);
+                else TryApplyOnHitAbility(attacker, target);
             }
         }
 
@@ -655,9 +668,10 @@ namespace DnDTactics.Combat
                           $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}{rollTag}");
 
                 if (target.Character.IsDown) DropCombatant(target);
+                else TryApplyOnHitAbility(attacker, target);   // rider only matters on a survivor
             }
 
-             RefreshMovementRange();
+            RefreshMovementRange();
         }
 
         // Gathers the advantage/disadvantage sources that apply to one attack. The ONLY place
@@ -699,6 +713,60 @@ namespace DnDTactics.Combat
                     ctx.AddForcedCrit("target paralyzed (melee)");
             }
         }
+
+        // If the attacker is a monster with an on-hit ability, the target rolls the ability's save;
+        // on failure, the condition is applied with its authored clear-rule + DC. First real consumer
+        // of the save system. (Only heroes can currently suffer these — monsters don't carry a
+        // barracks/dying path — but the code is team-agnostic.)
+        void TryApplyOnHitAbility(Combatant attacker, Combatant target)
+        {
+            var ability = attacker.OnHitAbility;
+            if (ability == null || !ability.enabled) return;
+            if (target.HasCondition(MapCondition(ability.appliesCondition))) return; // already afflicted
+
+            var save = SaveResolver.Resolve(target, ability.saveAbility, ability.saveDC);
+            string tName = target.Character.characterName;
+            string aName = attacker.Character.characterName;
+
+            if (save.autoFailed || !save.success)
+            {
+                var type = MapCondition(ability.appliesCondition);
+                var clear = MapClearRule(ability.clearRule);
+                target.AddCondition(type, clear, ability.durationRounds, aName,
+                                    ability.saveAbility, ability.saveDC);
+                string how = save.autoFailed
+                    ? $"auto-fails the DC {ability.saveDC} {ability.saveAbility} save"
+                    : $"fails the DC {ability.saveDC} {ability.saveAbility} save ({save.total})";
+                Debug.Log($"{tName} {how} — {type}! (from {aName})");
+            }
+            else
+            {
+                Debug.Log($"{tName} resists {aName}'s {MapCondition(ability.appliesCondition)} " +
+                          $"(DC {ability.saveDC} {ability.saveAbility} save: {save.total}).");
+            }
+        }
+
+        // Single translation point: Data-side authoring enums → Combat runtime enums.
+        // If the mirror enums ever drift, this fails to compile here (not silently elsewhere).
+        static ConditionType MapCondition(DnDTactics.Data.ConditionTypeData d) => d switch
+        {
+            DnDTactics.Data.ConditionTypeData.Paralyzed => ConditionType.Paralyzed,
+            DnDTactics.Data.ConditionTypeData.Prone => ConditionType.Prone,
+            DnDTactics.Data.ConditionTypeData.Stunned => ConditionType.Stunned,
+            DnDTactics.Data.ConditionTypeData.Restrained => ConditionType.Restrained,
+            DnDTactics.Data.ConditionTypeData.Blinded => ConditionType.Blinded,
+            DnDTactics.Data.ConditionTypeData.Frightened => ConditionType.Frightened,
+            DnDTactics.Data.ConditionTypeData.Poisoned => ConditionType.Poisoned,
+            _ => ConditionType.Prone,
+        };
+
+        static ClearRule MapClearRule(DnDTactics.Data.ConditionClearData d) => d switch
+        {
+            DnDTactics.Data.ConditionClearData.RepeatingSave => ClearRule.RepeatingSave,
+            DnDTactics.Data.ConditionClearData.DurationRounds => ClearRule.DurationRounds,
+            DnDTactics.Data.ConditionClearData.UntilRemoved => ClearRule.UntilRemoved,
+            _ => ClearRule.UntilRemoved,
+        };
 
         // True if any hostile (relative to 'self') sits within 'feet' of self. Used for
         // ranged-in-melee; reused later by reaction/positioning rules.

@@ -28,6 +28,10 @@ namespace DnDTactics.Data
         public int damageDieSides = 6;
         public int damageBonus = 1;
 
+        [Header("Signature Ability (optional — leave 'applies' as None for plain attackers)")]
+        [Tooltip("On a successful hit, target makes a save or suffers a condition. None = no ability.")]
+        public MonsterAbility onHitAbility;
+
         // XP to use: explicit xpValue if set, else derived from CR.
         public int XpReward => xpValue > 0 ? xpValue : XpForCR(challengeRating);
 
