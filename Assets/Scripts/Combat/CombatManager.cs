@@ -189,6 +189,7 @@ namespace DnDTactics.Combat
             if (Input.GetKeyDown(KeyCode.L)) DebugToggleParalyzed();
             if(Input.GetKeyDown(KeyCode.R)) DebugToggleCondition(ConditionType.Restrained);
             if (Input.GetKeyDown(KeyCode.T)) DebugToggleCondition(ConditionType.Frightened);
+            if (Input.GetKeyDown(KeyCode.H)) DebugToggleCondition(ConditionType.Grappled);
             if (Input.GetKeyDown(KeyCode.K)) DebugRollSave();
 
 
@@ -408,6 +409,7 @@ namespace DnDTactics.Combat
             foreach (var c in combatants) c.SetSelected(c == entry.combatant);
             selected = entry.combatant;
 
+            int speed = entry.combatant.HasCondition(ConditionType.Grappled) ? 0 : entry.combatant.Character.Speed;
             resources.ResetForTurn(entry.combatant.Character.Speed);
             entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
             entry.combatant.SetDisengaged(false);   // Disengage lasts only your own turn
@@ -562,6 +564,11 @@ namespace DnDTactics.Combat
         {
             var active = turnOrder.Current?.combatant;
             if (active == null) return;
+            if (active.HasCondition(ConditionType.Grappled))
+            {
+                Debug.Log($"{active.Character.characterName} is Grappled — can't move.");
+                return;
+            }
             if (!reachable.TryGetValue(target, out int cost)) return;
             if (!resources.CanSpendMovement(cost)) return;
 
@@ -769,7 +776,7 @@ namespace DnDTactics.Combat
                 var type = MapCondition(ability.appliesCondition);
                 var clear = MapClearRule(ability.clearRule);
                 target.AddCondition(type, clear, ability.durationRounds, aName,
-                                    ability.saveAbility, ability.saveDC);
+                                    ability.saveAbility, ability.saveDC, attacker);
                 string how = save.autoFailed
                     ? $"auto-fails the DC {ability.saveDC} {ability.saveAbility} save"
                     : $"fails the DC {ability.saveDC} {ability.saveAbility} save ({save.total})";
@@ -788,6 +795,7 @@ namespace DnDTactics.Combat
         {
             DnDTactics.Data.ConditionTypeData.Paralyzed => ConditionType.Paralyzed,
             DnDTactics.Data.ConditionTypeData.Petrified => ConditionType.Petrified,
+            DnDTactics.Data.ConditionTypeData.Grappled => ConditionType.Grappled,
             DnDTactics.Data.ConditionTypeData.Prone => ConditionType.Prone,
             DnDTactics.Data.ConditionTypeData.Stunned => ConditionType.Stunned,
             DnDTactics.Data.ConditionTypeData.Restrained => ConditionType.Restrained,
@@ -891,6 +899,12 @@ namespace DnDTactics.Combat
             Debug.Log($"*** {c.Character.characterName} is down! ***");
             occupancy.Remove(c.Coord);
             combatants.Remove(c);
+            // A dead grappler releases its grapples. Broad rule for now: an enemy death frees
+            // grappled players (precise per-source release deferred — needs Source as a combatant ref).
+            // A dead combatant releases the conditions IT applied (e.g. its grapples) — precisely,
+            // by source, so an unrelated death doesn't free a grapple held by someone else.
+            foreach (var other in combatants)
+                other.RemoveConditionsFromSource(c);
             turnOrder.Remove(c);
 
             if (c.Team == Team.Enemy) defeatedEnemyXp += c.XpReward;

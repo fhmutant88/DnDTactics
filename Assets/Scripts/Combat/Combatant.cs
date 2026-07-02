@@ -76,10 +76,21 @@ namespace DnDTactics.Combat
         // Add a condition (no duplicate stacking of the same type).
         public void AddCondition(ConditionType type, ClearRule clear = ClearRule.UntilRemoved,
                                  int rounds = -1, string source = null,
-                                 Ability saveAbility = Ability.Constitution, int saveDC = 10)
+                                 Ability saveAbility = Ability.Constitution, int saveDC = 10,
+                                 Combatant sourceCombatant = null)
         {
             if (HasCondition(type)) return;
-            conditions.Add(new ActiveCondition(type, clear, rounds, source, saveAbility, saveDC));
+            var cond = new ActiveCondition(type, clear, rounds, source, saveAbility, saveDC);
+            cond.SourceCombatant = sourceCombatant;
+            conditions.Add(cond);
+        }
+
+        // Remove any conditions applied by a specific combatant (e.g. a dead grappler's grapples).
+        public void RemoveConditionsFromSource(Combatant source)
+        {
+            for (int i = conditions.Count - 1; i >= 0; i--)
+                if (conditions[i].SourceCombatant == source)
+                    conditions.RemoveAt(i);
         }
 
         public bool RemoveCondition(ConditionType type)

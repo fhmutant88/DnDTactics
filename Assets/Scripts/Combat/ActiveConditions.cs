@@ -41,6 +41,10 @@ namespace DnDTactics.Combat
         public Ability SaveAbility { get; }
         public int SaveDC { get; }
 
+        // The combatant that applied this condition (for source-dependent clears — e.g. a grapple
+        // ends when its grappler dies). Null for conditions with no relevant source.
+        public Combatant SourceCombatant { get; set; }
+
         public ActiveCondition(ConditionType type, ClearRule clear = ClearRule.UntilRemoved,
                                int rounds = -1, string source = null,
                                Ability saveAbility = Ability.Constitution, int saveDC = 10)

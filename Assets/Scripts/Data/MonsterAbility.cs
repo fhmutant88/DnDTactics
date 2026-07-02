@@ -30,6 +30,6 @@ namespace DnDTactics.Data
 
     // Inspector-facing mirrors of the Combat enums, so Data doesn't depend on Combat.
     // (Combat maps these to its ConditionType/ClearRule.)
-    public enum ConditionTypeData { Paralyzed, Petrified, Prone, Stunned, Restrained, Blinded, Frightened, Poisoned }
+    public enum ConditionTypeData { Paralyzed, Petrified, Grappled, Prone, Stunned, Restrained, Blinded, Frightened, Poisoned }
     public enum ConditionClearData { RepeatingSave, DurationRounds, UntilRemoved }
 }

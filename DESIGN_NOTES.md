@@ -1224,5 +1224,29 @@ fast additions on the proven AddAttackModifiers pipeline.
 - MONSTERS UNLOCKED (attack-effect level): Frightened → Banshee/Mummy dread; Restrained → web/grapple-lite
   monsters (partial until the save/movement pieces land).
   
+  ## Combat depth — Grappled condition (speed-0 movement lock) (DONE)
+First MOVEMENT-restricting condition (all prior conditions touched rolls/turn-flow/damage). Entry point to
+the positioning cluster. Note: the "move through enemies" bug from old notes is ALREADY FIXED — IsOccupied
+as the MovementRange block test stops both entering and routing-through occupied cells. Confirmed in play.
+- EFFECT: Grappled → speed 0. Enforced in BeginTurn (reset movement to 0 if Grappled) → no reachable cells,
+  can't move. Still acts/attacks/reacts normally (grappled is NOT incapacitated). Simplest possible lock —
+  grid doesn't track occupancy (that's CombatManager's dict), so no grid change.
+- APPLICATION: via MonsterAbility (Gelatinous Cube: on-hit → save-or-Grappled), same template as Ghoul/
+  Cockatrice. 5e grapple is a CONTESTED CHECK, not a save — save-vs-DC is an approximation until the player
+  Grapple ACTION + contested-check system exists (deferred). ConditionTypeData mirror += Grappled; MapCondition
+  case added.
+- CLEAR: repeating Str save to break free (RepeatingSave clear-rule, approximates 5e escape). PLUS a new hook:
+  a dead grappler releases grapples — BROAD rule for now (enemy death frees ALL grappled players). Precise
+  per-source release DEFERRED (needs ActiveCondition.Source as a combatant reference, not the current string).
+- DEBUG: 'H' toggles Grappled via generic DebugToggleCondition.
+- DEFERRED (positioning cluster continues): player Grapple + Shove ACTIONS (contested checks — new system);
+  precise per-grappler release; move-through-ALLIES passthrough (currently blocks allies too — slightly strict);
+  champagne-cork bottleneck; difficult terrain; Tumble; squeezing. Frightened's move-toward-source restriction
+  also waits here.
+- MONSTERS UNLOCKED: Gelatinous Cube, Otyugh (grapple-based) — author as data.
+- Files touched: CombatManager.cs (speed-0 in BeginTurn; grappler-death release in DropCombatant; MapCondition
+  case; 'H' debug key); MonsterAbility.cs (ConditionTypeData += Grappled).
+  
+  
   
   
