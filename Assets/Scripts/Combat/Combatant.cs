@@ -90,6 +90,12 @@ namespace DnDTactics.Combat
             }
         }
 
+        // --- Death saves (combat-only; resolves to barracks Down/Dead at encounter end) ---
+        // A downed hero lingers DYING on the field, rolling a save each turn, until stabilized
+        // (3 successes), dead (3 failures), or revived. Combat-only, like conditions — never
+        // touches the persistent Character/barracks until the encounter resolves.
+        public DeathSaves Death { get; } = new DeathSaves();
+
         private Renderer bodyRenderer;
         private Color baseColor;
         private MaterialPropertyBlock mpb;

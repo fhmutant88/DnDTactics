@@ -58,6 +58,8 @@ namespace DnDTactics.Combat
         private TurnResources resources = new TurnResources();
         private Dictionary<GridCoord, int> reachable = new();
 
+        private readonly List<string> combatDeadMemberIds = new();  // heroes who died via death saves
+
         private bool awaitingProvokeConfirm = false;
         private GridCoord pendingMoveTarget;
         private int pendingMoveCost;
@@ -371,6 +373,14 @@ namespace DnDTactics.Combat
             entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
             entry.combatant.SetDisengaged(false);   // Disengage lasts only your own turn
             entry.combatant.TickConditions();     // durationed conditions count down (Prone is permanent)
+            // Dying hero rolls a death save at the start of their turn (before the incap skip).
+            if (entry.combatant.Death.IsDying)
+            {
+                RollDeathSave(entry.combatant);
+                // If the save killed them or left them down, the incapacitation check below
+                // (Unconscious) skips the rest of the turn. If a nat 20 revived them, they're
+                // conscious now and take a normal turn.
+            }
             RefreshMovementRange();
 
             // Incapacitated (Paralyzed/Stunned/Unconscious) → no actions or movement; skip the turn.
@@ -428,6 +438,23 @@ namespace DnDTactics.Combat
             else if (!res.hit) Debug.Log($"OA: {atkName} misses {defName} ({res.attackTotal} vs AC {res.targetAC}).{rollTag}");
             else
             {
+                // Damage to a DYING hero doesn't reduce HP (already 0) — it's a death-save
+                // failure instead (a crit = two). The "monster finishes the fallen" rule.
+                if (target.Death.IsDying)
+                {
+                    int fails = res.crit ? 2 : 1;
+                    target.Death.AddFailure(fails);
+                    Debug.Log($"{atkName} strikes the dying {defName} — " +
+                              $"{fails} death-save failure(s)! ({target.Death.Failures}/3)");
+                    if (target.Death.IsDead)
+                    {
+                        Debug.Log($"*** {defName} has DIED. ***");
+                        KillDyingHero(target);
+                    }
+                    RefreshMovementRange();
+                    return;
+                }
+
                 target.Character.TakeDamage(res.damage);
                 string critTag = res.crit ? " CRIT!" : "";
                 Debug.Log($"OA: {atkName} hits {defName}{critTag} for {res.damage}. " +
@@ -595,6 +622,16 @@ namespace DnDTactics.Combat
             { Debug.Log($"{atkName} attacks {defName}: {res.attackTotal} vs AC {res.targetAC} — miss.{rollTag}"); }
             else
             {
+                if (target.Death.IsDying)
+                {
+                    int fails = res.crit ? 2 : 1;
+                    target.Death.AddFailure(fails);
+                    Debug.Log($"OA: {atkName} strikes the dying {defName} — {fails} failure(s)! " +
+                              $"({target.Death.Failures}/3)");
+                    if (target.Death.IsDead) { Debug.Log($"*** {defName} has DIED. ***"); KillDyingHero(target); }
+                    return;
+                }
+
                 target.Character.TakeDamage(res.damage);
                 string critTag = res.crit ? " CRIT!" : "";
                 Debug.Log($"{atkName} hits {defName}{critTag} for {res.damage} " +
@@ -715,37 +752,92 @@ namespace DnDTactics.Combat
 
         void DropCombatant(Combatant c)
         {
+            // Player heroes don't die instantly at 0 HP — they enter the DYING state and linger
+            // on the field, rolling death saves. Enemies die immediately as before.
+            if (c.Team == Team.Player && !c.Death.IsDead)
+            {
+                if (!c.Death.IsDying && !c.Death.IsStable)
+                {
+                    c.Death.BeginDying();
+                    c.AddCondition(ConditionType.Unconscious);  // incapacitated → turn-skip hook
+                    Debug.Log($"*** {c.Character.characterName} drops to 0 HP — DYING! " +
+                              $"(death saves begin) ***");
+                }
+                return;  // stays in combatants / on their tile; no barracks write yet
+            }
+
+            // --- Enemy death (unchanged behavior) ---
             Debug.Log($"*** {c.Character.characterName} is down! ***");
             occupancy.Remove(c.Coord);
             combatants.Remove(c);
             turnOrder.Remove(c);
 
-            // If this was a deployed party hero, mark them Down in the active slot's barracks.
-            if (!string.IsNullOrEmpty(c.BarracksMemberId))
-            {
-                var slot = DnDTactics.Core.GameSession.Instance != null
-                    ? DnDTactics.Core.GameSession.Instance.ActiveSlot : null;
-                var member = slot != null ? slot.barracks.GetById(c.BarracksMemberId) : null;
-                if (member != null)
-                {
-                    member.status = DnDTactics.Characters.MemberStatus.Down;
-                    member.fellAtLongRest = slot.party.longRestsTaken; // stamp the rest-count at death
-                    member.character.TakeDamage(99999);
-                    DnDTactics.Core.GameSession.Instance.SaveActive();
-                    Debug.Log($"{member.character.characterName} marked Down " +
-                              $"(fell at long rest {member.fellAtLongRest}).");
-                }
-            }
-
             if (c.Team == Team.Enemy) defeatedEnemyXp += c.XpReward;
             Destroy(c.gameObject);
             CheckForVictory();
         }
-        
+
+        // Roll one death save for a dying hero (5e): 10+ success, <10 failure.
+        // Nat 20 → revive at 1 HP; nat 1 → two failures. 3 successes → stable; 3 failures → dead.
+        void RollDeathSave(Combatant c)
+        {
+            int roll = DnDTactics.Rules.Dice.Roll(20);
+            string name = c.Character.characterName;
+
+            if (roll == 20)
+            {
+                c.Death.Revive();
+                c.RemoveCondition(ConditionType.Unconscious);
+                c.Character.Revive(1);   // back up at 1 HP
+                Debug.Log($"{name} rolls a natural 20 on their death save — back up at 1 HP!");
+                return;
+            }
+            if (roll == 1)
+            {
+                c.Death.AddFailure(2);
+                Debug.Log($"{name} rolls a natural 1 — two death-save failures! " +
+                          $"({c.Death.Failures}/3)");
+            }
+            else if (roll >= 10)
+            {
+                c.Death.AddSuccess();
+                Debug.Log($"{name} succeeds a death save ({c.Death.Successes}/3 successes).");
+            }
+            else
+            {
+                c.Death.AddFailure();
+                Debug.Log($"{name} fails a death save ({c.Death.Failures}/3 failures).");
+            }
+
+            if (c.Death.IsStable)
+                Debug.Log($"*** {name} is STABLE (unconscious but no longer dying). ***");
+            if (c.Death.IsDead)
+            {
+                Debug.Log($"*** {name} has DIED (three death-save failures). ***");
+                KillDyingHero(c);
+            }
+        }
+
+        // A dying hero who hit 3 failures: remove from the field (barracks write happens at
+        // encounter resolution, reading Death.IsDead).
+        void KillDyingHero(Combatant c)
+        {
+            if (c.Team == Team.Player && !string.IsNullOrEmpty(c.BarracksMemberId))
+                combatDeadMemberIds.Add(c.BarracksMemberId);
+            occupancy.Remove(c.Coord);
+            combatants.Remove(c);
+            turnOrder.Remove(c);
+            Destroy(c.gameObject);
+            CheckForVictory();
+        }
+
         void CheckForVictory()
         {
-            bool playersLeft = combatants.Exists(c => c.Team == Team.Player);
+            // A dying/stable hero is still ON the field but not fighting. Defeat = no hero is
+            // still up (all remaining players are out of the fight). Victory = no enemies left.
+            bool playersUp = combatants.Exists(c => c.Team == Team.Player && !c.Death.IsOutOfFight);
             bool enemiesLeft = combatants.Exists(c => c.Team == Team.Enemy);
+            bool playersLeft = playersUp;
 
             if (!playersLeft)
             {
@@ -767,7 +859,50 @@ namespace DnDTactics.Combat
             encounterConcluded = true;
             encounterRunning = false;
             if (highlighter) highlighter.Clear();
+            ResolveFallenToBarracks();
             OnEncounterEnded?.Invoke(victory);
+        }
+
+        // Persist each fallen hero's death-save state to the barracks (option B — resolve by
+        // actual state, no mercy stabilize): 3-failures → Dead; dying/stable → Down (revivable).
+        // Heroes still up are untouched. This is where combat-only death state becomes persistent.
+        void ResolveFallenToBarracks()
+        {
+            var slot = DnDTactics.Core.GameSession.Instance != null
+                ? DnDTactics.Core.GameSession.Instance.ActiveSlot : null;
+            if (slot == null) return;
+
+            bool anyChange = false;
+
+            // Heroes still on the field who are dying or stable → Down (revivable).
+            foreach (var c in combatants)
+            {
+                if (c == null || c.Team != Team.Player) continue;
+                if (string.IsNullOrEmpty(c.BarracksMemberId)) continue;
+                if (!c.Death.IsOutOfFight) continue;
+
+                var member = slot.barracks.GetById(c.BarracksMemberId);
+                if (member == null) continue;
+
+                member.status = DnDTactics.Characters.MemberStatus.Down;
+                member.fellAtLongRest = slot.party.longRestsTaken;
+                member.character.TakeDamage(99999);
+                Debug.Log($"{member.character.characterName} is Down (revivable).");
+                anyChange = true;
+            }
+
+            // Heroes who hit 3 failures (already removed from the field) → Dead.
+            foreach (var id in combatDeadMemberIds)
+            {
+                var member = slot.barracks.GetById(id);
+                if (member == null) continue;
+                member.status = DnDTactics.Characters.MemberStatus.Dead;
+                member.character.TakeDamage(99999);
+                Debug.Log($"{member.character.characterName} has died in combat.");
+                anyChange = true;
+            }
+
+            if (anyChange) DnDTactics.Core.GameSession.Instance.SaveActive();
         }
 
         void GrantVictoryRewards()
@@ -824,6 +959,7 @@ namespace DnDTactics.Combat
             foreach (var c in combatants)
                 if (c != null) Destroy(c.gameObject);
             combatants.Clear();
+            combatDeadMemberIds.Clear();
             occupancy.Clear();
             turnOrder = new TurnOrder();
             selected = null;
