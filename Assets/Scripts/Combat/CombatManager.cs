@@ -187,9 +187,27 @@ namespace DnDTactics.Combat
             if (playerTurn && Input.GetKeyDown(KeyCode.G)) RequestDisengage();
             if (Input.GetKeyDown(KeyCode.P)) DebugToggleProne();
             if (Input.GetKeyDown(KeyCode.L)) DebugToggleParalyzed();
+            if(Input.GetKeyDown(KeyCode.R)) DebugToggleCondition(ConditionType.Restrained);
+            if (Input.GetKeyDown(KeyCode.T)) DebugToggleCondition(ConditionType.Frightened);
             if (Input.GetKeyDown(KeyCode.K)) DebugRollSave();
 
 
+        }
+
+        // DEBUG: toggle any condition on the selected combatant (generic; supersedes per-condition toggles).
+        void DebugToggleCondition(ConditionType type)
+        {
+            if (selected == null) { Debug.Log($"No combatant selected to toggle {type}."); return; }
+            if (selected.HasCondition(type))
+            {
+                selected.RemoveCondition(type);
+                Debug.Log($"{selected.Character.characterName} is no longer {type}.");
+            }
+            else
+            {
+                selected.AddCondition(type);
+                Debug.Log($"{selected.Character.characterName} is now {type}.");
+            }
         }
 
         // True when the mouse is over a UI element, so game clicks don't bleed through it.
@@ -719,6 +737,17 @@ namespace DnDTactics.Combat
             // Petrified target: attacks against it have advantage (no auto-crit — that's paralysis-only).
             if (target.HasCondition(ConditionType.Petrified))
                 ctx.AddAdvantage("target petrified");
+
+            // Restrained: attacks AGAINST it have advantage; ITS attacks have disadvantage.
+            if (target.HasCondition(ConditionType.Restrained))
+                ctx.AddAdvantage("target restrained");
+            if (attacker.HasCondition(ConditionType.Restrained))
+                ctx.AddDisadvantage("attacker restrained");
+
+            // Frightened: disadvantage on the frightened creature's OWN attacks.
+            // (5e also forbids moving toward the fear source — deferred to the movement cluster.)
+            if (attacker.HasCondition(ConditionType.Frightened))
+                ctx.AddDisadvantage("attacker frightened");
         }
 
         // If the attacker is a monster with an on-hit ability, the target rolls the ability's save;

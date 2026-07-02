@@ -1201,5 +1201,28 @@ overflowed off-screen past ~8 monsters).
 - Files touched: ExplorationEncounters.cs (monsterPool auto-load in Awake; monsterResourcePath field);
   ExplorationHUD.cs (debug panel scroll/pin/sort).
   
+  ## Combat depth — Frightened + Restrained conditions (attack-roll effects only) (DONE)
+Two more conditions, both pure attack-roll modifiers (no new hooks like Petrified's damage resistance) —
+fast additions on the proven AddAttackModifiers pipeline.
+- RESTRAINED: attacks against it → advantage; its own attacks → disadvantage. (5e also: disadvantage on
+  DEX saves — DEFERRED, see below.)
+- FRIGHTENED: disadvantage on its own attacks. (5e also: can't move toward the fear source — DEFERRED.)
+- Both wired in AddAttackModifiers beside Petrified. Compose via the cancellation rule (frightened attacker
+  vs. restrained target = disadvantage + advantage = flat, etc.).
+- DEBUG: generic DebugToggleCondition(type) added (supersedes per-condition toggles; migrate P/L later).
+  'R' = Restrained, 'T' = Frightened (terror; F/G taken).
+- DEFERRED (each needs a small new SYSTEM, disproportionate to build for one condition now):
+  * Restrained → DISADVANTAGE on Dex saves (NOT auto-fail — corrected mid-build). Needs a SAVE-side modifier
+    collector (AddSaveModifiers) parallel to AddAttackModifiers; SaveResolver takes an AttackContext but
+    nothing builds one for saves yet. Build when more effects impose save adv/disadv (many will).
+  * Frightened → can't move toward the fear source. Needs conditions to store a SOURCE combatant reference +
+    a movement-path check in TryMoveTo. Belongs with the positioning/movement cluster (same neighborhood as
+    Grappled's movement lock + the move-through-enemies fix). Build movement-condition restrictions once, there.
+- Files touched: CombatManager.cs (Restrained + Frightened in AddAttackModifiers; DebugToggleCondition + R/T
+  keys; verify MapCondition has both cases). ActiveCondition.cs + MonsterAbility.cs mirror: verify enums
+  already contain Restrained + Frightened (from phase 3 — likely no change).
+- MONSTERS UNLOCKED (attack-effect level): Frightened → Banshee/Mummy dread; Restrained → web/grapple-lite
+  monsters (partial until the save/movement pieces land).
+  
   
   
