@@ -198,7 +198,7 @@ namespace DnDTactics.UI
             debugPanel.transform.SetParent(canvas.transform, false);
             var bg = debugPanel.AddComponent<Image>();
             bg.color = new Color(0f, 0f, 0f, 0.85f);
-            Anchor(debugPanel.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(-20, -100), new Vector2(280, 400));
+            Anchor(debugPanel.GetComponent<RectTransform>(), new Vector2(1f, 1f), new Vector2(-20, -100), new Vector2(280, 600));
 
             var title = MakeText("DbgTitle", 20, TextAlignmentOptions.Center);
             title.text = "DEBUG SPAWN (F1)";
@@ -215,28 +215,55 @@ namespace DnDTactics.UI
             srt.pivot = new Vector2(0.5f, 1); srt.anchoredPosition = new Vector2(0, -38);
             srt.sizeDelta = new Vector2(0, 40);
 
-            float y = -84;
-            // One row per monster in the pool: "+ Name" adds one to the forced list.
+            // --- Scrolling monster list (fills the middle; title above, reset buttons pinned below) ---
+            var viewport = new GameObject("DbgViewport", typeof(RectTransform));
+            viewport.transform.SetParent(debugPanel.transform, false);
+            var vrt = viewport.GetComponent<RectTransform>();
+            vrt.anchorMin = new Vector2(0, 0); vrt.anchorMax = new Vector2(1, 1);
+            vrt.offsetMin = new Vector2(6, 92);    // leave room for the 2 pinned buttons at the bottom
+            vrt.offsetMax = new Vector2(-6, -84);  // leave room for title + status at the top
+            viewport.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.04f);
+            var mask = viewport.AddComponent<RectMask2D>();
+
+            var content = new GameObject("DbgContent", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            var crt = content.GetComponent<RectTransform>();
+            crt.anchorMin = new Vector2(0, 1); crt.anchorMax = new Vector2(1, 1);
+            crt.pivot = new Vector2(0.5f, 1); crt.anchoredPosition = Vector2.zero;
+
+            var scroll = viewport.AddComponent<ScrollRect>();
+            scroll.content = crt;
+            scroll.viewport = vrt;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 20f;
+
+            // One row per monster (alphabetical so it's easy to find any monster).
+            float y = 0f;
+            int rows = 0;
             if (encounters != null && encounters.MonsterNames != null)
             {
-                foreach (var name in encounters.MonsterNames)
+                foreach (var name in encounters.MonsterNames.OrderBy(n => n))
                 {
                     string captured = name;
-                    MakeDebugButton($"+ {captured}", y, new Color(0.3f, 0.4f, 0.5f), () =>
+                    MakeDebugButton(content.transform, $"+ {captured}", y, new Color(0.3f, 0.4f, 0.5f), () =>
                     {
                         DnDTactics.Core.DebugSpawn.ForcedMonsters.Add(captured);
                         DnDTactics.Core.DebugSpawn.Enabled = true;
                     });
-                    y -= 40;
+                    y -= 38;
+                    rows++;
                 }
             }
+            crt.sizeDelta = new Vector2(0, rows * 38 + 4);   // content tall enough to scroll
 
-            MakeDebugButton("Clear list", y, new Color(0.5f, 0.4f, 0.2f), () =>
+            // --- Reset controls pinned to the bottom of the panel (outside the scroll) ---
+            MakeDebugButton(debugPanel.transform, "Clear list", -540, new Color(0.5f, 0.4f, 0.2f), () =>
             {
                 DnDTactics.Core.DebugSpawn.ForcedMonsters.Clear();
             });
-            y -= 40;
-            MakeDebugButton("Random (off)", y, new Color(0.4f, 0.3f, 0.3f), () =>
+            MakeDebugButton(debugPanel.transform, "Random (off)", -576, new Color(0.4f, 0.3f, 0.3f), () =>
             {
                 DnDTactics.Core.DebugSpawn.Clear();
             });
@@ -244,15 +271,15 @@ namespace DnDTactics.UI
             debugPanel.SetActive(false); // hidden until F1
         }
 
-        void MakeDebugButton(string text, float y, Color color, UnityEngine.Events.UnityAction onClick)
+        void MakeDebugButton(Transform parent, string text, float y, Color color, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject(text + "Btn", typeof(RectTransform));
-            go.transform.SetParent(debugPanel.transform, false);
+            go.transform.SetParent(parent, false);
             go.AddComponent<Image>().color = color;
             var btn = go.AddComponent<Button>();
             var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(0.5f, 1);
-            rt.anchoredPosition = new Vector2(0, y); rt.sizeDelta = new Vector2(-20, 34);
+            rt.anchoredPosition = new Vector2(0, y); rt.sizeDelta = new Vector2(-16, 34);
             btn.onClick.AddListener(onClick);
             var label = MakeText("L", 16, TextAlignmentOptions.Center);
             label.text = text;

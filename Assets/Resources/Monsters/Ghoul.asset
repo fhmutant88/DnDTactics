@@ -22,3 +22,10 @@ MonoBehaviour:
   damageDiceCount: 2
   damageDieSides: 6
   damageBonus: 2
+  onHitAbility:
+    enabled: 1
+    appliesCondition: 0
+    saveAbility: 2
+    saveDC: 11
+    clearRule: 0
+    durationRounds: 3

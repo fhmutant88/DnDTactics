@@ -1153,4 +1153,53 @@ every combat system converging on one monster.
   MapClearRule; TryApplyOnHitAbility in TryAttack + TryAttackAsReaction; ProcessEscapeSaves in BeginTurn).
   (MonsterAbility.cs + MonsterStats.onHitAbility authored earlier this session.)
   
+  ## Monster-ability model — SCOPE + what it can't yet express (learned via Mind Flayer)
+The MonsterAbility model handles the SIMPLE signature shape ONLY: ONE attack, ONE save, ONE condition
+(Ghoul, Cockatrice, Ghast, single-condition monsters). It does NOT yet handle:
+- MULTIATTACK / attack lists + choice-of-attack (needs monster-AI milestone — which attack when).
+- CHAINED or CONDITIONAL effects (grapple THEN stun; effect only if target already incapacitated) — no
+  precondition concept.
+- Creature SIZE (no size field on MonsterStats/Character) — blocks size-gated effects.
+- GRAPPLE (deferred positioning/occupancy cluster).
+- AREA / cone save effects (deferred typed-effects "combat-depth part 2", shared with traps/spellcasting).
+MIND FLAYER sits at the intersection of ALL of these (3 attacks: tentacle grapple→stun, brain-extract on
+incapacitated, Mind Blast cone-stun). => NOT a next-up monster; one of the most system-dependent in the
+roster. Re-attempt only after multiattack + grapple + size + AoE exist. (Matches its original
+"signature-or-cut, needs saves+more" bestiary tag.)
+NEXT SIGNATURE MONSTERS that FIT the current model (single on-hit save-or-condition): Cockatrice + Basilisk
+(→ Petrified, new condition), Ghast (→ Paralyzed, Ghoul reskin). Build these; defer the complex ones.
+
+## Combat depth — Petrified condition + Cockatrice (DONE)
+Second new condition; second signature-monster shape after Ghoul. Introduces the first DAMAGE-modifying
+condition (all prior conditions touched only rolls/turn-flow).
+- Petrified effects: incapacitated (turn-skip — added to IsIncapacitated); auto-fails STR/DEX saves (added
+  to SaveResolver.DefenderAutoFailsStrDex); attacks vs. it have ADVANTAGE (AddAttackModifiers — but NO
+  auto-crit, unlike Paralyzed); RESISTANCE to all damage = HALF damage (new hook in TryAttack's hit branch,
+  min 1; log shows actual halved dmg). Escape = repeating CON save (not auto-failed → escapable).
+- NEW HOOK TYPE: damage resistance in the damage-application path (TryAttack). Prior conditions only touched
+  rolls (advantage/auto-fail) or turn-flow (skip). Applied in TryAttack only, not OA path (petrified rarely
+  provokes — low value; same 3-line pattern if wanted later).
+- ConditionType += Petrified; mirror ConditionTypeData += Petrified; MapCondition case added.
+- Cockatrice authored (DC 11 Con, Petrified, RepeatingSave) — Ghoul's template, different condition.
+- Files touched: ActiveCondition.cs (enum); MonsterAbility.cs (mirror enum); Combatant.cs (IsIncapacitated);
+  SaveResolver.cs (auto-fail); CombatManager.cs (MapCondition, AddAttackModifiers advantage, TryAttack
+  resistance). Cockatrice = data asset.
+- Basilisk = same shape (bite → Petrified); trivial to author now. Ghast = Ghoul reskin (Paralyzed).
+- NEXT: Frightened + Restrained (feed AddAttackModifiers; monsters waiting — Banshee etc.), then deferred clusters.
+
+## Content registration — monsters auto-load from Resources (fixes "new monster doesn't appear")
+GOTCHA: monsterPool was a hand-maintained List<MonsterStats> on ExplorationEncounters — a new MonsterStats
+asset was INVISIBLE (no debug-panel entry, can't spawn) until dragged into the Inspector list. Hit twice
+(Cockatrice, Mind Flayer). Same class as the ContentDatabase "remember to add new Species/Classes" note.
+FIX: LoadMonsterPool() in Awake auto-discovers via Resources.LoadAll<MonsterStats>("Monsters"). Put monster
+assets under Assets/Resources/Monsters/ → creating an asset auto-registers it (no drag, nothing to forget).
+Inspector-assigned assets still merged/deduped (backward compatible).
+CAVEAT: Resources folders load entirely into the build — fine for ~50 tiny MonsterStats; NOT the pattern for
+art/large assets. Upgrade path if outgrown: Addressables or a MonsterDatabase SO (like ContentDatabase).
+DEBUG PANEL also fixed same session: scroll view + pinned reset buttons + alphabetized (was fixed-height,
+overflowed off-screen past ~8 monsters).
+- Files touched: ExplorationEncounters.cs (monsterPool auto-load in Awake; monsterResourcePath field);
+  ExplorationHUD.cs (debug panel scroll/pin/sort).
+  
+  
   

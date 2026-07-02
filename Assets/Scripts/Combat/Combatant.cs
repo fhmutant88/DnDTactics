@@ -68,7 +68,8 @@ namespace DnDTactics.Combat
         public bool IsIncapacitated =>
             HasCondition(ConditionType.Paralyzed) ||
             HasCondition(ConditionType.Stunned) ||
-            HasCondition(ConditionType.Unconscious);
+            HasCondition(ConditionType.Unconscious) ||
+            HasCondition(ConditionType.Petrified);
 
         // Add a condition (no duplicate stacking of the same type). rounds = -1 means it
         // persists until explicitly removed (Prone, until you stand up).

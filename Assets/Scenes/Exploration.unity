@@ -354,6 +354,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0d14b01e5f1b044409fcb392eb8eafc8, type: 2}
   - {fileID: 11400000, guid: bd866474ff0cd7a45b4854f69d7e1d33, type: 2}
   - {fileID: 11400000, guid: 3f5224f80795a6b408cafff7af88e432, type: 2}
+  - {fileID: 11400000, guid: 1e9583df29d3d5f478af8a0a5e1f8a0a, type: 2}
+  - {fileID: 11400000, guid: 3981eae6373b546408aa75eed0ad5887, type: 2}
   encounterCount: 3
   triggerRadius: 2
   roomLightChance: 0.4

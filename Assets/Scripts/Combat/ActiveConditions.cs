@@ -9,6 +9,7 @@ namespace DnDTactics.Combat
     {
         Prone,
         Paralyzed,
+        Petrified,
         Grappled,
         Restrained,
         Incapacitated,

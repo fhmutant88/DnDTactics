@@ -24,7 +24,12 @@ namespace DnDTactics.Procgen
 
 
         [Header("Encounter content")]
+        [Tooltip("Auto-loaded from Resources/Monsters at startup — no manual assignment needed. " +
+                 "Leave empty; anything dragged here is ADDED to the auto-loaded set.")]
         public List<MonsterStats> monsterPool = new();
+
+        [Tooltip("Folder under Resources/ to auto-load MonsterStats from.")]
+        public string monsterResourcePath = "Monsters";
 
         [Header("Placement")]
         [Tooltip("How many rooms (after the first) get an encounter.")]
@@ -113,6 +118,20 @@ namespace DnDTactics.Procgen
         {
             if (combat == null) combat = FindFirstObjectByType<CombatManager>();
             if (combat != null) combat.startDormant = true;
+            LoadMonsterPool();
+        }
+
+        // Auto-discover every MonsterStats under Resources/<monsterResourcePath>. Creating a monster
+        // asset in that folder registers it automatically — no manual Inspector drag, nothing to forget.
+        // Any assets pre-assigned in the Inspector are kept and merged (deduped).
+        void LoadMonsterPool()
+        {
+            var loaded = Resources.LoadAll<MonsterStats>(monsterResourcePath);
+            foreach (var ms in loaded)
+                if (ms != null && !monsterPool.Contains(ms))
+                    monsterPool.Add(ms);
+            Debug.Log($"Monster pool: {monsterPool.Count} monsters loaded " +
+                      $"(from Resources/{monsterResourcePath} + any Inspector-assigned).");
         }
 
         void Start()

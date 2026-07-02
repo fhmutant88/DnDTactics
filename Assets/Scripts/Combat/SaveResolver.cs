@@ -65,6 +65,7 @@ namespace DnDTactics.Combat
         static bool DefenderAutoFailsStrDex(Combatant d) =>
             d.HasCondition(ConditionType.Paralyzed) ||
             d.HasCondition(ConditionType.Stunned) ||
-            d.HasCondition(ConditionType.Unconscious);
+            d.HasCondition(ConditionType.Unconscious) ||
+            d.HasCondition(ConditionType.Petrified);
     }
 }

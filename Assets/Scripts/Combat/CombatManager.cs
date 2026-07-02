@@ -661,9 +661,12 @@ namespace DnDTactics.Combat
                     return;
                 }
 
-                target.Character.TakeDamage(res.damage);
+                int dmg = res.damage;
+                if (target.HasCondition(ConditionType.Petrified))
+                    dmg = System.Math.Max(1, dmg / 2);   // petrified: resistance to all damage (half)
+                target.Character.TakeDamage(dmg);
                 string critTag = res.crit ? " CRIT!" : "";
-                Debug.Log($"{atkName} hits {defName}{critTag} for {res.damage} " +
+                Debug.Log($"{atkName} hits {defName}{critTag} for {dmg} " +
                           $"({(res.crit ? "nat 20" : res.attackTotal + " vs AC " + res.targetAC)}). " +
                           $"{defName} HP: {target.Character.currentHP}/{target.Character.MaxHP}{rollTag}");
 
@@ -712,6 +715,10 @@ namespace DnDTactics.Combat
                 if (!ranged)  // melee within reach → auto-crit on hit
                     ctx.AddForcedCrit("target paralyzed (melee)");
             }
+
+            // Petrified target: attacks against it have advantage (no auto-crit — that's paralysis-only).
+            if (target.HasCondition(ConditionType.Petrified))
+                ctx.AddAdvantage("target petrified");
         }
 
         // If the attacker is a monster with an on-hit ability, the target rolls the ability's save;
@@ -751,6 +758,7 @@ namespace DnDTactics.Combat
         static ConditionType MapCondition(DnDTactics.Data.ConditionTypeData d) => d switch
         {
             DnDTactics.Data.ConditionTypeData.Paralyzed => ConditionType.Paralyzed,
+            DnDTactics.Data.ConditionTypeData.Petrified => ConditionType.Petrified,
             DnDTactics.Data.ConditionTypeData.Prone => ConditionType.Prone,
             DnDTactics.Data.ConditionTypeData.Stunned => ConditionType.Stunned,
             DnDTactics.Data.ConditionTypeData.Restrained => ConditionType.Restrained,
