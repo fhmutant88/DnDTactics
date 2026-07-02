@@ -48,6 +48,12 @@ namespace DnDTactics.Characters
 
         public int AbilityModifier(Ability ability) => abilities.GetModifier(ability);
 
+        // True if this character's class grants proficiency in saving throws for this ability.
+        // 5e: every class is proficient in exactly two saves (CharacterClass.savingThrow1/2).
+        public bool IsProficientInSave(Ability ability) =>
+            characterClass != null &&
+            (characterClass.savingThrow1 == ability || characterClass.savingThrow2 == ability);
+
         // Max HP for the current level: level 1 = max hit die + Con mod;
         // each later level = average roll (die/2 + 1) + Con mod. Minimum 1 per level.
         public int MaxHP

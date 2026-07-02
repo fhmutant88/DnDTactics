@@ -182,6 +182,7 @@ namespace DnDTactics.Combat
             if (playerTurn && Input.GetKeyDown(KeyCode.G)) RequestDisengage();
             if (Input.GetKeyDown(KeyCode.P)) DebugToggleProne();
             if (Input.GetKeyDown(KeyCode.L)) DebugToggleParalyzed();
+            if (Input.GetKeyDown(KeyCode.K)) DebugRollSave();
 
 
         }
@@ -338,6 +339,21 @@ namespace DnDTactics.Combat
                 selected.AddCondition(ConditionType.Paralyzed);
                 Debug.Log($"{selected.Character.characterName} is now Paralyzed.");
             }
+        }
+
+        // DEBUG: roll a Dexterity save (DC 13) for the selected combatant, to exercise SaveResolver
+        // until real ability-imposed saves exist. Shows proficiency + the paralyzed auto-fail.
+        void DebugRollSave()
+        {
+            if (selected == null) { Debug.Log("No combatant selected to roll a save."); return; }
+            const int dc = 13;
+            var result = SaveResolver.Resolve(selected, DnDTactics.Rules.Ability.Dexterity, dc);
+            string name = selected.Character.characterName;
+            if (result.autoFailed)
+                Debug.Log($"{name} auto-FAILS the DC {dc} Dex save (incapacitated).");
+            else
+                Debug.Log($"{name} {(result.success ? "SUCCEEDS" : "FAILS")} the DC {dc} Dex save " +
+                          $"(rolled {result.roll} + mods = {result.total} vs DC {dc}).");
         }
 
         // Additive HUD reads for the new resources.

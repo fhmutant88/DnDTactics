@@ -1106,3 +1106,27 @@ DEBUG KEYS live: D=Dash, G=Disengage, P=Prone toggle, L=Paralyzed toggle (keep u
 NEXT options: (a) move-through-enemies occupancy fix (small, closes a flagged bug), (b) death saves/phase 5
 (down-but-not-out; DropCombatant forks: players linger dying, enemies removed — high horror payoff),
 (c) more conditions (Restrained/Blinded/Frightened, fast wins lighting up bestiary monsters).
+
+## Combat depth — Save system: SaveResolver primitive + auto-fail wiring (DONE)
+The shared dependency for content: paralysis appliers, trap effects, spellcasting all need "roll a save
+vs a DC." Built as a reusable primitive mirroring AttackResolver; one real consumer wired (auto-fail).
+- SaveResolver.Resolve(Combatant defender, Ability, int dc, AttackContext=null): d20 + ability mod +
+  proficiency (if class-granted) vs DC. Sibling to AttackResolver (defender rolls, target = DC not AC).
+  Reuses AttackContext roll-modes for adv/disadv on saves (free). SaveResult carries roll/total/dc/mode/
+  otherRoll for transparent logging.
+- DC is PASSED IN (MonsterStats has no save DC/proficiencies). When monster abilities are authored they
+  supply their own DC (5e 8+prof+mod, or authored flat). Monsters saving default to FLAT ability mod until
+  MonsterStats carries save proficiencies (noted; fine for now — nothing makes monsters save yet).
+- Character.IsProficientInSave(Ability): reads CharacterClass.savingThrow1/2. Persistent-character data,
+  lives on Character (like AbilityModifier/ProficiencyBonus).
+- AUTO-FAIL wired (closes the phase-3b stub): Paralyzed/Stunned/Unconscious auto-fail STR & DEX saves,
+  checked BEFORE rolling. Stunned/Unconscious covered for free when their appliers land.
+- DEBUG: 'K' rolls a DC-13 Dex save for the selected combatant (exercises proficiency + auto-fail until
+  real ability-imposed saves exist).
+- Files touched: SaveResolver.cs (new); Character.cs (IsProficientInSave); CombatManager.cs (DebugRollSave
+  + 'K' key).
+- UNBLOCKS NEXT: Ghoul's paralysis applier now needs only a monster-ability system ("on hit → target Con
+  save vs DC or gain Paralyzed") — the save half exists. That applier = the first real save consumer + first
+  signature bestiary monster.
+  
+  
