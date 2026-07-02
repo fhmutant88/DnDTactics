@@ -410,7 +410,7 @@ namespace DnDTactics.Combat
             selected = entry.combatant;
 
             int speed = entry.combatant.HasCondition(ConditionType.Grappled) ? 0 : entry.combatant.Character.Speed;
-            resources.ResetForTurn(entry.combatant.Character.Speed);
+            resources.ResetForTurn(speed);
             entry.combatant.ResetReaction();      // reaction refreshes at the start of your own turn
             entry.combatant.SetDisengaged(false);   // Disengage lasts only your own turn
             entry.combatant.TickConditions();     // durationed conditions count down (Prone is permanent)

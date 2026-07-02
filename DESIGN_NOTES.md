@@ -1247,6 +1247,33 @@ as the MovementRange block test stops both entering and routing-through occupied
 - Files touched: CombatManager.cs (speed-0 in BeginTurn; grappler-death release in DropCombatant; MapCondition
   case; 'H' debug key); MonsterAbility.cs (ConditionTypeData += Grappled).
   
+  - CLEAR: repeating Str save to escape; PLUS precise source release — ActiveCondition.SourceCombatant tracks
+  who applied it; RemoveConditionsFromSource(deadCombatant) in DropCombatant frees only that combatant's
+  grapples (not an unrelated death). Debug-applied grapples have null source (persist until toggled).
+  (Supersedes the earlier broad "any enemy death frees all" rule — that visibly broke grapples in testing.)
   
+  ## Positioning cluster — Grappled DONE (pickup spot)
+DONE + verified: Grappled = speed-0 movement lock (BeginTurn ResetForTurn(speed) + TryMoveTo/Dash guards),
+can still act/attack, monster-applied via MonsterAbility (Gelatinous Cube, Dex save), repeating escape save,
+PRECISE source-tracked release (ActiveCondition.SourceCombatant + RemoveConditionsFromSource on grappler
+death — unrelated deaths don't free it; confirmed in play). "Move through enemies" bug from old notes was
+already fixed (IsOccupied block test). Committed + tagged grappled.
+CONDITIONS NOW LIVE (6): Prone, Paralyzed, Petrified, Frightened, Restrained, Grappled. Plus save system,
+death saves, OA/Disengage, full action economy. SIGNATURE MONSTERS: Ghoul, Cockatrice, Gelatinous Cube
+(+ Basilisk/Ghast trivial to author). Monster auto-load from Resources/Monsters; debug panel scroll/pin/sort.
+DEBUG KEYS: D=Dash G=Disengage Space=EndTurn P=Prone L=Paralyzed R=Restrained T=Frightened H=Grappled
+K=rollsave, Y/N=provoke prompt.
+NEXT — three directions:
+ (a) Contested checks + player Shove/Grapple ACTIONS (new system: d20 vs d20; completes positioning's active side).
+ (b) Save-modifier collector AddSaveModifiers (quick win; unblocks Restrained's deferred Dex-save disadvantage
+     + all future save adv/disadv; Frightened move-restriction can ride along now that SourceCombatant exists).
+ (c) MONSTER AI / behavior — the malicious-but-fair DM brain (HIGHEST IMPACT for game identity; currently
+     just EnemyAI.Decide; the whole bestiary waits on this to feel alive). Biggest piece — fresh session.
+LEAN: (c) is the soul of the game and the highest-impact remaining work, but it's the largest — best fresh.
+(b) is the clean small next-step if you want a warm-up before the AI milestone.
+STILL DEFERRED in positioning: move-through-allies passthrough, champagne-cork bottleneck, difficult terrain,
+Tumble, squeezing. And the combat↔exploration bridge cluster (fog-in-combat, fight-widening) from way back.
+
+
   
   
